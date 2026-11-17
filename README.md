@@ -101,7 +101,7 @@ The public app uses two services from the same GitHub repository:
 
    ```env
    NODE_ENV=production
-   HOST=[::]
+   HOST=::
    PORT=4000
    DATA_DIR=/data
    APP_BASE_URL=https://internship-outreach-production.up.railway.app

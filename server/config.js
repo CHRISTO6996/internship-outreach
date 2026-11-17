@@ -22,9 +22,17 @@ for (const dir of [dataDir, uploadDir, resumeDir]) {
 
 const env = (key) => (process.env[key] || '').trim();
 
+/** Accept both `::` and the bracketed `[::]` form used by some platforms. */
+export function normalizeHost(value, fallback = '127.0.0.1') {
+  return String(value || '')
+    .trim()
+    .replace(/^\[/, '')
+    .replace(/\]$/, '') || fallback;
+}
+
 export const server = {
   port: Number(env('PORT') || 4000),
-  host: env('HOST') || '127.0.0.1',
+  host: normalizeHost(env('HOST')),
   nodeEnv: env('NODE_ENV') || 'development',
   appBaseUrl: env('APP_BASE_URL') || `http://localhost:${Number(env('PORT') || 4000)}`,
   logLevel: env('LOG_LEVEL') || 'info',
