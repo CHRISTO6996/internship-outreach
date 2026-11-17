@@ -263,6 +263,15 @@ export function disconnectGoogle(email = null) {
   return { disconnected: true, email: account.email };
 }
 
+export function setDefaultGoogleAccount(email) {
+  const account = get(`SELECT * FROM oauth_accounts WHERE provider = 'google' AND email = ?`, email);
+  if (!account) throw new NotFoundError('That Google account is not connected');
+  run(`UPDATE oauth_accounts SET is_default = 0 WHERE provider = 'google'`);
+  run(`UPDATE oauth_accounts SET is_default = 1, updated_at = ? WHERE id = ?`, nowIso(), account.id);
+  logActivity({ level: 'info', action: 'google_default_changed', message: `Sending account changed to ${account.email}.` });
+  return { email: account.email };
+}
+
 function encodeHeader(value) {
   const text = String(value || '');
   if (!/[^\x20-\x7E]/.test(text)) return text;

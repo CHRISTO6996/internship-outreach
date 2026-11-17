@@ -23,6 +23,7 @@ import {
   createAuthorizationUrl,
   disconnectGoogle,
   gmailConnectionStatus,
+  setDefaultGoogleAccount,
   testGmailConnection,
 } from '../services/google.js';
 
@@ -108,6 +109,15 @@ integrationsRouter.get('/google/callback', async (req, res) => {
 integrationsRouter.post('/google/disconnect', (req, res) => {
   const email = typeof req.body?.email === 'string' ? req.body.email : null;
   res.json(disconnectGoogle(email));
+});
+
+integrationsRouter.post('/google/default', (req, res, next) => {
+  try {
+    const body = parseBody(z.object({ email: z.string().trim().toLowerCase().min(3) }), req.body);
+    res.json(setDefaultGoogleAccount(body.email));
+  } catch (error) {
+    next(error);
+  }
 });
 
 integrationsRouter.post('/test/search', async (req, res, next) => {

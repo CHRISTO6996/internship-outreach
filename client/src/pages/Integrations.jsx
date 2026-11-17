@@ -42,6 +42,7 @@ export default function Integrations() {
   const [verifying, setVerifying] = useState(false);
   const [gmailTesting, setGmailTesting] = useState(false);
   const [gmailResult, setGmailResult] = useState(null);
+  const [switchingAccount, setSwitchingAccount] = useState('');
   const toast = useToast();
 
   async function load() {
@@ -80,9 +81,25 @@ export default function Integrations() {
     try {
       await api.post('/integrations/google/disconnect', {});
       toast.success('Google account disconnected.');
+      setGmailResult(null);
       load();
     } catch (error) {
       toast.error(error.message);
+    }
+  }
+
+  async function chooseAccount(email) {
+    if (email === gmail?.email) return;
+    setSwitchingAccount(email);
+    try {
+      await api.post('/integrations/google/default', { email });
+      toast.success(`Sending account changed to ${email}.`, { title: 'Account updated' });
+      setGmailResult(null);
+      load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setSwitchingAccount('');
     }
   }
 
@@ -402,6 +419,43 @@ export default function Integrations() {
               </p>
             ) : null}
 
+            {data?.google?.accounts?.length ? (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <p className="text-xs font-semibold text-slate-300">Sending account</p>
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  Choose which connected Gmail account sends the requests. You can connect more than one.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {data.google.accounts.map((account) => {
+                    const active = account.isDefault;
+                    return (
+                      <button
+                        key={account.email}
+                        type="button"
+                        disabled={Boolean(switchingAccount)}
+                        onClick={() => chooseAccount(account.email)}
+                        className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition ${
+                          active
+                            ? 'bg-violet-500/20 text-violet-100 ring-violet-400/40'
+                            : 'bg-white/5 text-slate-300 ring-white/10 hover:bg-white/10 hover:text-white'
+                        } disabled:cursor-not-allowed disabled:opacity-60`}
+                        title={active ? 'Currently sending from this account' : `Send from ${account.email}`}
+                      >
+                        {switchingAccount === account.email ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : active ? (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        ) : (
+                          <Mail className="h-3.5 w-3.5" />
+                        )}
+                        {account.email}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             {gmailResult ? (
               <div
                 className={`mt-3 rounded-xl p-3 text-xs ring-1 ${
@@ -434,26 +488,27 @@ export default function Integrations() {
                 {gmailTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
                 Test Gmail connection
               </button>
+              <button
+                type="button"
+                className={gmail?.connected ? 'btn-secondary !px-3 !py-2 text-xs' : 'btn-primary !px-3.5 !py-2 text-xs'}
+                onClick={connectGoogle}
+                disabled={!canConnectGoogle}
+                title={
+                  canConnectGoogle
+                    ? gmail?.connected
+                      ? 'Connect another Google account'
+                      : 'Start Google OAuth'
+                    : 'Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and TOKEN_ENCRYPTION_KEY to the backend .env first'
+                }
+              >
+                <LogIn className="h-3.5 w-3.5" /> {gmail?.connected ? 'Connect another account' : 'Connect Gmail'}
+              </button>
               <div className="flex-1" />
               {gmail?.connected ? (
                 <button type="button" className="btn-danger !px-3 !py-2 text-xs" onClick={disconnectGoogle}>
-                  <LogOut className="h-3.5 w-3.5" /> Disconnect
+                  <LogOut className="h-3.5 w-3.5" /> Disconnect current
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-primary !px-3.5 !py-2 text-xs"
-                  onClick={connectGoogle}
-                  disabled={!canConnectGoogle}
-                  title={
-                    canConnectGoogle
-                      ? 'Start Google OAuth'
-                      : 'Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and TOKEN_ENCRYPTION_KEY to the backend .env first'
-                  }
-                >
-                  <LogIn className="h-3.5 w-3.5" /> Connect Gmail
-                </button>
-              )}
+              ) : null}
             </div>
           </Card>
         </>
