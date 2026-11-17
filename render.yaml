@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: internship-outreach
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 4000
+      - key: DATA_DIR
+        value: /data
+      - key: APP_BASE_URL
+        sync: false
+      - key: CLIENT_BASE_URL
+        sync: false
+      - key: AUTH_USERNAME
+        value: admin
+      - key: AUTH_PASSWORD
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: HUNTER_API_KEY
+        sync: false
+      - key: ZEROBOUNCE_API_KEY
+        sync: false
+      - key: ABSOLUTE_DAILY_LIMIT
+        value: 40
+    disk:
+      name: app-data
+      mountPath: /data
+      sizeGB: 1
