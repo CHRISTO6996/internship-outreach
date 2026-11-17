@@ -238,7 +238,7 @@ export default function CompanyDatabase() {
                     const verification = VERIFICATION_META[company.verification] || VERIFICATION_META.unverified;
                     const emailStatus = EMAIL_STATUS[company.emailStatus] || EMAIL_STATUS.not_sent;
                     return (
-                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-500/150/15' : 'hover:bg-slate-50/60'}>
+                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-500/15' : 'hover:bg-slate-50/60'}>
                         <td className="td">
                           <input
                             type="checkbox"

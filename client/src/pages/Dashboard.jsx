@@ -246,7 +246,7 @@ export default function Dashboard() {
                   <li key={check.id}>
                     <Link
                       to={check.href}
-                      className="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-500/150/150/15"
+                      className="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-500/15"
                     >
                       <span
                         className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg ${

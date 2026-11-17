@@ -40,6 +40,8 @@ export default function Integrations() {
   const [verificationEmail, setVerificationEmail] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
   const [verifying, setVerifying] = useState(false);
+  const [gmailTesting, setGmailTesting] = useState(false);
+  const [gmailResult, setGmailResult] = useState(null);
   const toast = useToast();
 
   async function load() {
@@ -127,7 +129,24 @@ export default function Integrations() {
     }
   }
 
+  async function testGmail() {
+    setGmailTesting(true);
+    setGmailResult(null);
+    try {
+      const result = await api.post('/integrations/test/gmail', {});
+      setGmailResult({ ok: true, ...result });
+      toast.success(`Gmail connection verified for ${result.email}.`);
+    } catch (error) {
+      setGmailResult({ ok: false, message: error.message });
+      toast.error(error.message);
+    } finally {
+      setGmailTesting(false);
+    }
+  }
+
   const googleAccount = data?.google?.accounts?.[0];
+  const gmail = data?.google?.connection;
+  const canConnectGoogle = Boolean(data?.google?.configured && gmail?.encryptionKeySet);
 
   return (
     <>
@@ -203,11 +222,17 @@ export default function Integrations() {
             })}
           </div>
 
-          {googleAccount ? (
+          {gmail?.connected ? (
             <Alert tone="success" className="mb-5">
-              Gmail connected as <strong>{googleAccount.email}</strong>. Sending and reply tracking can use this account.
+              Gmail connected as <strong>{gmail.email}</strong>. Sending, connection tests and reply tracking can use this
+              account.
             </Alert>
-          ) : null}
+          ) : (
+            <Alert tone="warning" className="mb-5">
+              Gmail is not connected. Complete the OAuth setup below before sending.{' '}
+              {gmail?.missing?.length ? `Missing: ${gmail.missing.join(', ')}.` : null}
+            </Alert>
+          )}
 
           <div className="grid gap-5 lg:grid-cols-2">
             <Card className="p-4">
@@ -321,7 +346,12 @@ export default function Integrations() {
             <SectionHeading title="Google OAuth setup" description="Needed for Gmail sending, reply tracking and Sheets mirroring." icon={Send} />
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-slate-50 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Authorised redirect URI</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Authorised redirect URI</p>
+                  <span className="text-[10px] text-slate-400">
+                    {data.google.redirectUriSource === 'env' ? 'Set in .env' : 'Derived from request'}
+                  </span>
+                </div>
                 <div className="mt-1 flex items-center gap-2">
                   <code className="min-w-0 flex-1 truncate text-xs text-slate-700">{data.google.redirectUri}</code>
                   <button
@@ -348,15 +378,64 @@ export default function Integrations() {
                 </ul>
               </div>
             </div>
+
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge tone={data.google.configured ? 'emerald' : 'amber'} dot>
                 {data.google.configured ? 'OAuth client configured' : 'OAuth client missing'}
               </Badge>
-              <Badge tone={googleAccount ? 'emerald' : 'slate'} dot>
-                {googleAccount ? `Connected: ${googleAccount.email}` : 'No Google account connected'}
+              <Badge tone={gmail?.encryptionKeySet ? 'emerald' : 'amber'} dot>
+                {gmail?.encryptionKeySet ? 'Token encryption key set' : 'TOKEN_ENCRYPTION_KEY missing'}
               </Badge>
+              <Badge tone={gmail?.connected ? 'emerald' : 'slate'} dot>
+                {gmail?.connected ? `Connected: ${gmail.email}` : 'No Google account connected'}
+              </Badge>
+              {gmail?.ready ? (
+                <Badge tone="brand" dot>
+                  Ready to send
+                </Badge>
+              ) : null}
+            </div>
+
+            {gmail?.missing?.length && !gmail.connected ? (
+              <p className="mt-3 text-xs text-amber-200">
+                Before connecting: {gmail.missing.join(', ')}. Keys belong in the backend .env file, never in this browser.
+              </p>
+            ) : null}
+
+            {gmailResult ? (
+              <div
+                className={`mt-3 rounded-xl p-3 text-xs ring-1 ${
+                  gmailResult.ok
+                    ? 'bg-emerald-500/10 text-emerald-200 ring-emerald-400/30'
+                    : 'bg-amber-500/10 text-amber-200 ring-amber-400/30'
+                }`}
+              >
+                {gmailResult.ok ? (
+                  <>
+                    <p className="font-semibold">Gmail API responded for {gmailResult.email}.</p>
+                    <p className="mt-0.5 opacity-90">
+                      Messages: {gmailResult.messagesTotal ?? 'unknown'} · Threads: {gmailResult.threadsTotal ?? 'unknown'}
+                    </p>
+                  </>
+                ) : (
+                  <p>{gmailResult.message}</p>
+                )}
+              </div>
+            ) : null}
+
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+              <button
+                type="button"
+                className="btn-secondary !px-3 !py-2 text-xs"
+                onClick={testGmail}
+                disabled={!gmail?.connected || gmailTesting}
+                title={gmail?.connected ? 'Call the Gmail API with the connected account' : 'Connect Gmail first'}
+              >
+                {gmailTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                Test Gmail connection
+              </button>
               <div className="flex-1" />
-              {googleAccount ? (
+              {gmail?.connected ? (
                 <button type="button" className="btn-danger !px-3 !py-2 text-xs" onClick={disconnectGoogle}>
                   <LogOut className="h-3.5 w-3.5" /> Disconnect
                 </button>
@@ -365,8 +444,12 @@ export default function Integrations() {
                   type="button"
                   className="btn-primary !px-3.5 !py-2 text-xs"
                   onClick={connectGoogle}
-                  disabled={!data.google.configured}
-                  title={data.google.configured ? 'Start Google OAuth' : 'Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env first'}
+                  disabled={!canConnectGoogle}
+                  title={
+                    canConnectGoogle
+                      ? 'Start Google OAuth'
+                      : 'Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and TOKEN_ENCRYPTION_KEY to the backend .env first'
+                  }
                 >
                   <LogIn className="h-3.5 w-3.5" /> Connect Gmail
                 </button>

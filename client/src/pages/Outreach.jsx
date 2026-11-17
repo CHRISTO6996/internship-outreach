@@ -359,7 +359,7 @@ export default function Outreach() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {eligible.map((row) => (
-                    <tr key={row.id} className={selectedSet.has(row.id) ? 'bg-brand-500/150/15' : 'hover:bg-slate-50/60'}>
+                    <tr key={row.id} className={selectedSet.has(row.id) ? 'bg-brand-500/15' : 'hover:bg-slate-50/60'}>
                       <td className="td">
                         <input
                           type="checkbox"

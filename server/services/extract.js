@@ -20,6 +20,62 @@ const NOISE_LOCAL_PARTS = new Set([
   'firstname', 'lastname', 'someone', 'john', 'jane', 'info@example',
 ]);
 
+function cleanContext(value, limit = 240) {
+  return String(value || '')
+    .replace(/\|/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, limit);
+}
+
+/** Keep only the mailbox being scored so adjacent addresses cannot skew its category. */
+function withoutOtherEmails(value, targetEmail) {
+  const target = normalizeEmail(targetEmail);
+  return cleanContext(
+    String(value || '').replace(EMAIL_RE, (match) => (normalizeEmail(match) === target ? match : ' ')),
+  );
+}
+
+function contextAround(text, index, length, email) {
+  const raw = String(text || '');
+  const position = Number(index || 0);
+  const endPosition = position + Number(length || 0);
+  const previousBoundary = Math.max(raw.lastIndexOf('|', position), raw.lastIndexOf('\n', position));
+  const followingBoundaries = [raw.indexOf('|', endPosition), raw.indexOf('\n', endPosition)].filter(
+    (value) => value !== -1,
+  );
+  const nextBoundary = followingBoundaries.length ? Math.min(...followingBoundaries) : raw.length;
+  const start = Math.max(previousBoundary + 1, position - 100);
+  const end = Math.min(nextBoundary, endPosition + 100);
+  return withoutOtherEmails(raw.slice(start, end), email);
+}
+
+function contextForMailto($, element, href, email) {
+  const parts = [];
+  const container = $(element).closest('p, li, tr, td, dd, figcaption').first();
+  const containerText = container.length ? String(container.text()).replace(/\s+/g, ' ').trim() : '';
+  if (containerText && containerText.length <= 160) parts.push(containerText);
+
+  const parent = $(element).parent();
+  const siblings = parent.contents();
+  const position = siblings.index(element);
+  if (position >= 0) {
+    const from = Math.max(0, position - 2);
+    const to = Math.min(siblings.length - 1, position + 2);
+    for (let index = from; index <= to; index += 1) {
+      const text =
+        index === position
+          ? $(element).text()
+          : $(siblings[index]).text();
+      if (text) parts.push(text);
+    }
+  } else {
+    parts.push(parent.text());
+  }
+  parts.push($(element).text(), href);
+  return withoutOtherEmails(parts.filter(Boolean).join(' | '), email);
+}
+
 export function deobfuscate(text) {
   return String(text || '')
     .replace(/\s*(?:\[|\(|\{)\s*at\s*(?:\]|\)|\})\s*/gi, '@')
@@ -90,11 +146,15 @@ export function extractEmailsFromHtml(html, pageUrl) {
   const add = (rawEmail, context) => {
     const email = normalizeEmail(rawEmail);
     if (!isUsefulEmail(email)) return;
+    const pageContext = cleanContext(context);
     const existing = found.get(email);
-    const category = categorizeEmail(email.split('@')[0]);
+    const category = categorizeEmail(email.split('@')[0], pageContext);
     if (existing) {
       existing.occurrences += 1;
-      if (existing.category === 'other' && category !== 'other') existing.category = category;
+      if (existing.category === 'other' && category !== 'other') {
+        existing.category = category;
+        existing.context = pageContext || existing.context;
+      }
       return;
     }
     found.set(email, {
@@ -104,7 +164,7 @@ export function extractEmailsFromHtml(html, pageUrl) {
       category,
       sourceUrl: pageUrl,
       sourceType: pageTypeOf(pageUrl),
-      context: String(context || '').replace(/\s+/g, ' ').slice(0, 200),
+      context: pageContext || pageTypeOf(pageUrl),
       occurrences: 1,
     });
   };
@@ -118,7 +178,9 @@ export function extractEmailsFromHtml(html, pageUrl) {
         return href;
       }
     })();
-    for (const match of decoded.matchAll(EMAIL_RE)) add(match[0], 'mailto link');
+    for (const match of decoded.matchAll(EMAIL_RE)) {
+      add(match[0], contextForMailto($, element, decoded, match[0]));
+    }
   });
 
   // Visible text only. Replace element boundaries with spaces so that adjacent
@@ -128,7 +190,9 @@ export function extractEmailsFromHtml(html, pageUrl) {
     .replace(/<br[^>]*>/gi, ' ')
     .replace(/<[^>]*>/g, ' | ');
   const visible = deobfuscate(cheerio.load(`<div>${separated}</div>`).text());
-  for (const match of visible.matchAll(EMAIL_RE)) add(match[0], 'page text');
+  for (const match of visible.matchAll(EMAIL_RE)) {
+    add(match[0], contextAround(visible, match.index, match[0].length, match[0]));
+  }
 
   return [...found.values()];
 }

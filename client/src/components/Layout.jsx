@@ -101,7 +101,7 @@ function NavItems({ onNavigate }) {
 function Brand() {
   return (
     <div className="flex items-center gap-3 px-5 py-5">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500/150/15 text-brand-300 ring-1 ring-brand-400/30">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-500/15 text-brand-300 ring-1 ring-brand-400/30">
         <GraduationCap className="h-5 w-5" />
       </span>
       <div className="min-w-0">

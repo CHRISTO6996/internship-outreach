@@ -123,7 +123,7 @@ The public app uses two services from the same GitHub repository:
    - No frontend environment variables are required.
 
 3. **Google OAuth**
-   - Add the Railway callback URL above to the authorised redirect URIs in Google Cloud.
+   - Add the Railway callback URL above to the authorised redirect URIs in Google Cloud. If `GOOGLE_REDIRECT_URI` is left blank, the backend derives the same callback from `APP_BASE_URL` (or the forwarded request headers) and shows the effective value on **Integrations**.
    - Set `CLIENT_BASE_URL` on Railway to the final Vercel URL so OAuth errors redirect back to the UI.
 
 4. **Access control check**
@@ -192,7 +192,7 @@ All values are read by the backend only. Nothing secret is sent to the browser; 
 | --- | --- |
 | `GOOGLE_CLIENT_ID` | OAuth 2.0 client ID |
 | `GOOGLE_CLIENT_SECRET` | OAuth 2.0 client secret |
-| `GOOGLE_REDIRECT_URI` | Must match the URI registered in Google Cloud |
+| `GOOGLE_REDIRECT_URI` | Optional callback override. Blank = derived from `APP_BASE_URL` or the proxied request headers; the effective URI is shown on Integrations |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | Optional existing sheet; one is created on first sync when blank |
 | `TOKEN_ENCRYPTION_KEY` | 32+ random bytes (base64). Encrypts refresh tokens at rest. **Required for OAuth.** |
 | `ALLOWED_SENDER_EMAILS` | Optional comma-separated allowlist of Gmail accounts permitted to connect |
@@ -234,9 +234,9 @@ All values are read by the backend only. Nothing secret is sent to the browser; 
    TOKEN_ENCRYPTION_KEY=...   # required, see Quick start
    ```
 
-6. Restart the API, open **Integrations → Connect Gmail**, and approve the consent screen with the account you want to send from.
+6. Restart the API, open **Integrations → Connect Gmail**, and approve the consent screen with the account you want to send from. **Connect Gmail** stays disabled until the OAuth client and `TOKEN_ENCRYPTION_KEY` are both present in the backend environment.
 
-The callback exchanges the code, stores an encrypted refresh token in SQLite, and redirects back to the UI. Disconnecting removes the stored account and tokens. If the OAuth client is missing, **Connect Gmail** redirects back with an explicit error message rather than pretending to connect.
+The callback exchanges the code, stores an encrypted refresh token in SQLite, and redirects back to the UI. Disconnecting removes the stored account and tokens. If the OAuth client is missing, **Connect Gmail** redirects back with an explicit error message rather than pretending to connect. After connecting, use **Test Gmail connection** on the same page: it performs a real Gmail API `users.getProfile` call and reports the mailbox, message count and thread count, or the exact API error.
 
 > Gmail sending scopes are restricted: while the OAuth app is unverified, Google limits delivery to test users. For real outreach, complete Google's verification process or use an Internal (Workspace) app.
 

@@ -276,7 +276,7 @@ export default function SettingsPage() {
                       key={token}
                       type="button"
                       onClick={() => insertPlaceholder(token)}
-                      className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600 hover:bg-brand-500/150/15 hover:text-brand-200"
+                      className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600 hover:bg-brand-500/15 hover:text-brand-200"
                     >
                       {`{{${token}}}`}
                     </button>

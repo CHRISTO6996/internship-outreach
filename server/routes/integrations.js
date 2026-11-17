@@ -4,10 +4,12 @@ import {
   google,
   googleOAuthConfigured,
   integrationStatus,
+  security,
   search,
   zeroBounce,
   hunter,
   clientBaseUrlForRequest,
+  redirectUriForRequest,
 } from '../config.js';
 import { parseBody } from '../lib/validate.js';
 import { webSearch, searchAvailability } from '../services/search.js';
@@ -20,6 +22,8 @@ import {
   completeAuthorization,
   createAuthorizationUrl,
   disconnectGoogle,
+  gmailConnectionStatus,
+  testGmailConnection,
 } from '../services/google.js';
 
 export const integrationsRouter = Router();
@@ -33,6 +37,18 @@ function envChecklist() {
     { key: 'ZEROBOUNCE_API_KEY', label: 'ZeroBounce key', set: Boolean(zeroBounce.apiKey), group: 'Verification' },
     { key: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', set: Boolean(google.clientId), group: 'Google' },
     { key: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', set: Boolean(google.clientSecret), group: 'Google' },
+    {
+      key: 'TOKEN_ENCRYPTION_KEY',
+      label: 'Token encryption key',
+      set: Boolean(security.tokenEncryptionKey),
+      group: 'Google',
+    },
+    {
+      key: 'GOOGLE_REDIRECT_URI',
+      label: 'Explicit OAuth callback URL',
+      set: Boolean(google.redirectUriConfigured),
+      group: 'Google',
+    },
     {
       key: 'GOOGLE_SHEETS_SPREADSHEET_ID',
       label: 'Google Sheet ID',
@@ -53,17 +69,19 @@ integrationsRouter.get('/', (req, res) => {
     search: searchAvailability(),
     google: {
       configured: googleOAuthConfigured,
-      redirectUri: google.redirectUri,
+      redirectUri: redirectUriForRequest(req),
+      redirectUriSource: google.redirectUriConfigured ? 'env' : 'request',
       accounts,
       sheetsSpreadsheetId: google.sheetsSpreadsheetId || null,
       scopes: GOOGLE_SCOPES,
+      connection: gmailConnectionStatus(),
     },
   });
 });
 
 integrationsRouter.get('/google/start', (req, res, next) => {
   try {
-    res.redirect(createAuthorizationUrl());
+    res.redirect(createAuthorizationUrl(redirectUriForRequest(req)));
   } catch (error) {
     const target = new URL('/integrations', clientBaseUrlForRequest(req));
     target.searchParams.set('google', 'error');
@@ -115,17 +133,25 @@ integrationsRouter.post('/test/verification', async (req, res, next) => {
   }
 });
 
+integrationsRouter.post('/test/gmail', async (req, res, next) => {
+  try {
+    res.json(await testGmailConnection());
+  } catch (error) {
+    next(error);
+  }
+});
+
 integrationsRouter.get('/:key/guide', (req, res) => {
   const entry = integrationStatus().find((item) => item.key === req.params.key);
   if (!entry) throw new ValidationError('Unknown integration');
   res.json({
     ...entry,
-    steps: guideFor(entry.key),
+    steps: guideFor(entry.key, req),
     envExample: '.env.example in the project root documents every variable.',
   });
 });
 
-function guideFor(key) {
+function guideFor(key, req) {
   const shared = [
     'Copy .env.example to .env.',
     'Paste the credentials into .env (never into the browser or source files).',
@@ -139,7 +165,7 @@ function guideFor(key) {
         'Create a Google Cloud project and enable the Gmail API (and Google Sheets API for sheets).',
         'Configure the OAuth consent screen. Add your Gmail address as a test user while the app is unverified.',
         'Create an OAuth 2.0 Client ID of type "Web application".',
-        `Add the authorised redirect URI exactly as: ${google.redirectUri}`,
+        `Add the authorised redirect URI exactly as: ${redirectUriForRequest(req)}`,
         'Copy the client ID and secret into GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.',
         'Set TOKEN_ENCRYPTION_KEY to a long random string so refresh tokens are encrypted at rest.',
         'Restart the server, then use "Connect Gmail" on this page.',

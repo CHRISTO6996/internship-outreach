@@ -230,7 +230,7 @@ export default function EmailFinder() {
                   {filtered.map((company) => {
                     const status = STATUS_META[company.status] || STATUS_META.pending;
                     return (
-                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-500/150/15' : 'hover:bg-slate-50/60'}>
+                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-500/15' : 'hover:bg-slate-50/60'}>
                         <td className="td">
                           <input
                             type="checkbox"

@@ -55,6 +55,17 @@ export function clientBaseUrlForRequest(req) {
   return client.baseUrl;
 }
 
+/** Backend origin, used to build OAuth callback URLs behind a reverse proxy. */
+export function apiBaseUrlForRequest(req) {
+  const explicit = env('APP_BASE_URL');
+  if (explicit) return explicit.replace(/\/+$/, '');
+  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+  const host = String(req.headers['x-forwarded-host'] || req.get('host') || `localhost:${server.port}`)
+    .split(',')[0]
+    .trim();
+  return `${proto}://${host}`;
+}
+
 export const crawl = {
   userAgent:
     env('CRAWL_USER_AGENT') ||
@@ -77,13 +88,22 @@ export const zeroBounce = { apiKey: env('ZEROBOUNCE_API_KEY') };
 export const apollo = { apiKey: env('APOLLO_API_KEY') };
 export const snov = { clientId: env('SNOV_CLIENT_ID'), clientSecret: env('SNOV_CLIENT_SECRET') };
 
+const configuredRedirectUri = env('GOOGLE_REDIRECT_URI');
+
 export const google = {
   clientId: env('GOOGLE_CLIENT_ID'),
   clientSecret: env('GOOGLE_CLIENT_SECRET'),
   redirectUri:
-    env('GOOGLE_REDIRECT_URI') || `http://localhost:${Number(env('PORT') || 4000)}/api/integrations/google/callback`,
+    configuredRedirectUri || `http://localhost:${Number(env('PORT') || 4000)}/api/integrations/google/callback`,
+  redirectUriConfigured: Boolean(configuredRedirectUri),
   sheetsSpreadsheetId: env('GOOGLE_SHEETS_SPREADSHEET_ID'),
 };
+
+/** Explicit env value wins; otherwise derive from the request so Vercel rewrites work. */
+export function redirectUriForRequest(req) {
+  if (google.redirectUriConfigured) return google.redirectUri;
+  return `${apiBaseUrlForRequest(req)}/api/integrations/google/callback`;
+}
 
 export const security = {
   tokenEncryptionKey: env('TOKEN_ENCRYPTION_KEY'),

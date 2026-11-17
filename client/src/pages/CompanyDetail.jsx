@@ -312,7 +312,7 @@ export default function CompanyDetail() {
               {company.emails.map((email) => {
                 const verification = VERIFICATION_META[email.verification] || VERIFICATION_META.unverified;
                 return (
-                  <tr key={email.id} className={email.isPrimary ? 'bg-brand-500/150/15' : ''}>
+                  <tr key={email.id} className={email.isPrimary ? 'bg-brand-500/15' : ''}>
                     <td className="td">
                       <div className="flex items-center gap-2">
                         <Mail className="h-3.5 w-3.5 text-slate-400" />

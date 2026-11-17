@@ -32,7 +32,7 @@ export default function JobPanel({ compact = false }) {
           {active ? (
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-70" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500/150" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500/15" />
             </span>
           ) : null}
           <p className="text-sm font-semibold text-slate-900">Discovery job #{job.id}</p>

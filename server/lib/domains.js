@@ -157,17 +157,46 @@ export function isBlockedEmailDomain(domain) {
 }
 
 const EMAIL_CATEGORY_RULES = [
-  { category: 'internship', patterns: [/^(intern|internship|interns|trainee)/, /internship/] },
-  { category: 'recruitment', patterns: [/^(recruit|recruitment|recruiting|talent|talentacquisition|ta|staffing|hiring|placement|placements)/] },
-  { category: 'hr', patterns: [/^(hr|humanresources|human-resources|human_resources|hrd|people|personnel|careers?hr)/] },
-  { category: 'careers', patterns: [/^(career|careers|jobs?|job|apply|employment|opportunities)/] },
-  { category: 'general', patterns: [/^(info|contact|hello|hi|office|enquiry|enquiries|inquiry|general|mail|email|reach|connect|team|business|corporate)/] },
+  {
+    category: 'internship',
+    patterns: [/^(intern|interns|internship|internships|internapp|internapply|trainee|student|graduate|campus|summerintern)/, /internship/],
+  },
+  {
+    category: 'recruitment',
+    patterns: [/^(recruit|recruiter|recruiters|recruitment|recruiting|recruitingteam|talent|talentacquisition|ta|staffing|hiring|hiringteam|placement|placements|joinus|joinourteam)/],
+  },
+  {
+    category: 'hr',
+    patterns: [/^(hr|hrteam|humanresources|humanresource|human-resources|human_resources|hrd|people|peopleops|peopleteam|personnel|careers?hr)/],
+  },
+  {
+    category: 'careers',
+    patterns: [/^(career|careers|jobs?|job|apply|applications|employment|opportunities|openings|workwithus)/],
+  },
+  {
+    category: 'general',
+    patterns: [/^(info|contact|contactus|getintouch|sayhello|hello|hi|office|enquiry|enquiries|inquiry|general|mail|email|reach|connect|team|business|corporate)/],
+  },
 ];
 
-export function categorizeEmail(localPart) {
+const CONTEXT_CATEGORY_RULES = [
+  { category: 'internship', patterns: [/internship/i, /intern(ship)?\s+(queries|enquiries|inquiries|contact|applications?)/i, /summer intern/i] },
+  { category: 'recruitment', patterns: [/recruit(ment|ing|er|ers)?\b/i, /talent acquisition/i, /hiring team/i, /placements?\b/i] },
+  { category: 'hr', patterns: [/\bhr\b/i, /human resources?/i, /people team/i, /people operations/i, /personnel/i] },
+  { category: 'careers', patterns: [/\bcareers?\b/i, /job openings?/i, /apply (for|here|now)/i, /work with us/i, /join our team/i] },
+  { category: 'general', patterns: [/general (enquiries|inquiries|contact|mailbox)/i, /for (any |all )?(queries|enquiries|inquiries)/i] },
+];
+
+export function categorizeEmail(localPart, context = '') {
   const local = String(localPart || '').toLowerCase();
   for (const rule of EMAIL_CATEGORY_RULES) {
     if (rule.patterns.some((pattern) => pattern.test(local))) return rule.category;
+  }
+  const text = String(context || '');
+  if (text) {
+    for (const rule of CONTEXT_CATEGORY_RULES) {
+      if (rule.patterns.some((pattern) => pattern.test(text))) return rule.category;
+    }
   }
   return 'other';
 }

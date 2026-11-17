@@ -8,7 +8,7 @@ const TONES = {
   amber: 'bg-amber-500/10 text-amber-200 ring-amber-400/30',
   rose: 'bg-rose-500/10 text-rose-200 ring-rose-400/30',
   violet: 'bg-violet-500/10 text-violet-200 ring-violet-400/30',
-  brand: 'bg-brand-500/150/10 text-brand-200 ring-brand-400/30',
+  brand: 'bg-brand-500/10 text-brand-200 ring-brand-400/30',
 };
 
 const DOT_TONES = {
@@ -18,7 +18,7 @@ const DOT_TONES = {
   amber: 'bg-amber-500',
   rose: 'bg-rose-500',
   violet: 'bg-violet-500',
-  brand: 'bg-brand-500/150',
+  brand: 'bg-brand-500/15',
 };
 
 export function Badge({ tone = 'slate', dot = false, children, className = '' }) {
@@ -53,7 +53,7 @@ export function SectionHeading({ title, description, actions, icon: Icon }) {
 
 export function StatCard({ label, value, hint, icon: Icon, tone = 'brand', footer = null }) {
   const iconTone = {
-    brand: 'bg-brand-500/150/15 text-brand-300 ring-1 ring-brand-400/20',
+    brand: 'bg-brand-500/15 text-brand-300 ring-1 ring-brand-400/20',
     emerald: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20',
     amber: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20',
     rose: 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-400/20',
@@ -181,7 +181,7 @@ export function Toggle({ checked, onChange, label, description, disabled = false
 
 export function ProgressBar({ value = 0, tone = 'brand', className = '' }) {
   const tones = {
-    brand: 'bg-brand-500/150',
+    brand: 'bg-brand-500/15',
     emerald: 'bg-emerald-500',
     amber: 'bg-amber-500',
     rose: 'bg-rose-500',

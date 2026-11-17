@@ -20,22 +20,22 @@ export function googleOAuthReady() {
   return Boolean(googleConfig.clientId && googleConfig.clientSecret);
 }
 
-export function oauthClient() {
+export function oauthClient(redirectUri = googleConfig.redirectUri) {
   return new googleapis.auth.OAuth2(
     googleConfig.clientId || 'missing-client-id',
     googleConfig.clientSecret || 'missing-client-secret',
-    googleConfig.redirectUri,
+    redirectUri,
   );
 }
 
 function cleanStates() {
   const cutoff = Date.now() - STATE_TTL_MS;
-  for (const [state, createdAt] of pendingStates) {
-    if (createdAt < cutoff) pendingStates.delete(state);
+  for (const [state, entry] of pendingStates) {
+    if (entry.createdAt < cutoff) pendingStates.delete(state);
   }
 }
 
-export function createAuthorizationUrl() {
+export function createAuthorizationUrl(redirectUri = googleConfig.redirectUri) {
   if (!googleOAuthReady()) {
     throw new IntegrationError('Google OAuth is not configured.', {
       integration: 'gmail',
@@ -50,8 +50,8 @@ export function createAuthorizationUrl() {
   }
   cleanStates();
   const state = crypto.randomBytes(24).toString('hex');
-  pendingStates.set(state, Date.now());
-  return oauthClient().generateAuthUrl({
+  pendingStates.set(state, { createdAt: Date.now(), redirectUri });
+  return oauthClient(redirectUri).generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: true,
@@ -70,12 +70,13 @@ function assertAllowed(email) {
 }
 
 export async function completeAuthorization(code, state) {
-  if (!pendingStates.has(state)) {
+  const pending = pendingStates.get(state);
+  if (!pending) {
     throw new ValidationError('This Google authorisation link expired or was already used. Start again.');
   }
   pendingStates.delete(state);
 
-  const auth = oauthClient();
+  const auth = oauthClient(pending.redirectUri);
   let tokens;
   try {
     const result = await auth.getToken(code);
@@ -151,6 +152,45 @@ export function listAccounts() {
             updated_at AS updatedAt
      FROM oauth_accounts WHERE provider = 'google' ORDER BY is_default DESC, id DESC`,
   );
+}
+
+export function gmailConnectionStatus() {
+  const account = defaultAccount();
+  const oauthConfigured = googleOAuthReady();
+  const encryptionKeySet = hasEncryptionKey();
+  const missing = [];
+  if (!oauthConfigured) missing.push('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET');
+  if (!encryptionKeySet) missing.push('TOKEN_ENCRYPTION_KEY');
+  if (!account) missing.push('Connect Gmail');
+  return {
+    oauthConfigured,
+    encryptionKeySet,
+    connected: Boolean(account),
+    email: account?.email || null,
+    tokenExpiry: account?.token_expiry || null,
+    scopes: account ? String(account.scopes || '').split(/\s+/).filter(Boolean) : [],
+    ready: oauthConfigured && encryptionKeySet && Boolean(account),
+    missing,
+  };
+}
+
+/** Real Gmail API health check for the connected mailbox. */
+export async function testGmailConnection() {
+  const { auth, account } = await authorizedClient();
+  const gmail = googleapis.gmail({ version: 'v1', auth });
+  try {
+    const profile = await gmail.users.getProfile({ userId: 'me' });
+    return {
+      ok: true,
+      email: account.email,
+      messagesTotal: profile.data.messagesTotal ?? null,
+      threadsTotal: profile.data.threadsTotal ?? null,
+      historyId: profile.data.historyId || null,
+    };
+  } catch (error) {
+    const message = error?.response?.data?.error?.message || error.message;
+    throw new IntegrationError(`Gmail rejected the connection test: ${message}`, { integration: 'gmail' });
+  }
 }
 
 function saveRefreshedTokens(accountId) {
