@@ -94,7 +94,7 @@ The public app uses two services from the same GitHub repository:
 
 `vercel.json` proxies every `/api/*` request from the Vercel domain to the Railway backend, so the browser only talks to one origin.
 
-The live frontend is https://internship-outreach-eight.vercel.app. A catch-all rewrite in ercel.json serves index.html for client-side routes such as /integrations, while /api/* requests still proxy to the Railway backend.
+The live frontend is https://internship-outreach-eight.vercel.app. A catch-all rewrite in `vercel.json` serves `index.html` for client-side routes such as `/integrations`, while `/api/*` requests still proxy to the Railway backend.
 
 1. **Railway backend**
    - Deploy `CHRISTO6996/internship-outreach` as a Dockerfile service.
@@ -240,7 +240,9 @@ All values are read by the backend only. Nothing secret is sent to the browser; 
 
 The callback exchanges the code, stores an encrypted refresh token in SQLite, and redirects back to the UI. Disconnecting removes the stored account and tokens. If the OAuth client is missing, **Connect Gmail** redirects back with an explicit error message rather than pretending to connect. After connecting, use **Test Gmail connection** on the same page: it performs a real Gmail API `users.getProfile` call and reports the mailbox, message count and thread count, or the exact API error.
 
-> Gmail sending scopes are restricted: while the OAuth app is unverified, Google limits delivery to test users. For real outreach, complete Google's verification process or use an Internal (Workspace) app.
+You can connect more than one Google account with **Connect another account**, then choose the active sender under **Sending account** on the Integrations page. The selected account is the one used for sending, reply polling and Sheets sync. Switching accounts does not require a redeploy.
+
+> Gmail sending scopes are restricted: while the OAuth app is unverified, Google limits delivery to test users. Add every account you want to connect under **Google Auth Platform → Audience → Test users**. For real outreach, complete Google's verification process or use an Internal (Workspace) app.
 
 ---
 
