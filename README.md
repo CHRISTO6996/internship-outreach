@@ -94,6 +94,8 @@ The public app uses two services from the same GitHub repository:
 
 `vercel.json` proxies every `/api/*` request from the Vercel domain to the Railway backend, so the browser only talks to one origin.
 
+The live frontend is https://internship-outreach-eight.vercel.app. A catch-all rewrite in ercel.json serves index.html for client-side routes such as /integrations, while /api/* requests still proxy to the Railway backend.
+
 1. **Railway backend**
    - Deploy `CHRISTO6996/internship-outreach` as a Dockerfile service.
    - Mount a persistent volume at `/data`.
@@ -105,7 +107,7 @@ The public app uses two services from the same GitHub repository:
    PORT=4000
    DATA_DIR=/data
    APP_BASE_URL=https://internship-outreach-production.up.railway.app
-   CLIENT_BASE_URL=https://<your-vercel-project>.vercel.app
+   CLIENT_BASE_URL=https://internship-outreach-eight.vercel.app
    GOOGLE_REDIRECT_URI=https://internship-outreach-production.up.railway.app/api/integrations/google/callback
    AUTH_USERNAME=admin
    AUTH_PASSWORD=<strong unique password>
@@ -124,7 +126,7 @@ The public app uses two services from the same GitHub repository:
 
 3. **Google OAuth**
    - Add the Railway callback URL above to the authorised redirect URIs in Google Cloud. If `GOOGLE_REDIRECT_URI` is left blank, the backend derives the same callback from `APP_BASE_URL` (or the forwarded request headers) and shows the effective value on **Integrations**.
-   - Set `CLIENT_BASE_URL` on Railway to the final Vercel URL so OAuth errors redirect back to the UI.
+   - `CLIENT_BASE_URL` is set to `https://internship-outreach-eight.vercel.app` so OAuth errors redirect back to the UI.
 
 4. **Access control check**
 
