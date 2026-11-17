@@ -136,7 +136,7 @@ The live frontend is https://internship-outreach-eight.vercel.app. A catch-all r
    curl -u admin:'<AUTH_PASSWORD>' https://internship-outreach-production.up.railway.app/api/dashboard/stats
    ```
 
-   `GET /api/health` is the only public route. Every other API route must return `401` without Basic Auth and succeed with it. The Vercel domain will prompt for the same credentials before the UI can read data.
+   `GET /api/health` and `GET /api/integrations/google/callback` are the only public routes; the callback protects itself with a one-time OAuth `state` value. Every other API route must return `401` without Basic Auth and succeed with it. The Vercel domain will prompt for the same credentials before the UI can read data.
 
 ### Reset everything
 

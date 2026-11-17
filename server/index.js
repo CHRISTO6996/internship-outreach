@@ -48,7 +48,8 @@ function secureEqual(a, b) {
  */
 app.use((req, res, next) => {
   if (!access.enabled) return next();
-  if (req.path === '/api/health') return next();
+  // Google redirects the browser here without an Authorization header. The one-time state parameter is validated during token exchange.
+  if (req.path === '/api/health' || (req.method === 'GET' && req.path === '/api/integrations/google/callback')) return next();
   const header = req.headers.authorization || '';
   if (header.startsWith('Basic ')) {
     const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
