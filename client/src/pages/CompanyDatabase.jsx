@@ -175,8 +175,8 @@ export default function CompanyDatabase() {
         </form>
 
         {selected.size ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-50 px-3 py-2">
-            <p className="text-xs font-medium text-brand-800">{selected.size} selected</p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-500/15 px-3 py-2">
+            <p className="text-xs font-medium text-brand-200">{selected.size} selected</p>
             <div className="flex gap-2">
               <button type="button" className="btn-ghost !py-1.5 text-xs" onClick={() => setSelected(new Set())}>
                 Clear
@@ -238,7 +238,7 @@ export default function CompanyDatabase() {
                     const verification = VERIFICATION_META[company.verification] || VERIFICATION_META.unverified;
                     const emailStatus = EMAIL_STATUS[company.emailStatus] || EMAIL_STATUS.not_sent;
                     return (
-                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-50/30' : 'hover:bg-slate-50/60'}>
+                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-500/150/15' : 'hover:bg-slate-50/60'}>
                         <td className="td">
                           <input
                             type="checkbox"
@@ -256,7 +256,7 @@ export default function CompanyDatabase() {
                           />
                         </td>
                         <td className="td">
-                          <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                          <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-200">
                             {company.name}
                           </Link>
                           <div className="mt-0.5 flex items-center gap-1.5">
@@ -272,7 +272,7 @@ export default function CompanyDatabase() {
                               href={company.website}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-700 hover:underline"
+                              className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-300 hover:underline"
                             >
                               <span className="truncate">{company.domain || company.website}</span>
                               <ExternalLink className="h-3 w-3 shrink-0" />
@@ -297,7 +297,7 @@ export default function CompanyDatabase() {
                               href={company.emailSource}
                               target="_blank"
                               rel="noreferrer"
-                              className="block truncate text-xs text-slate-500 hover:text-brand-700"
+                              className="block truncate text-xs text-slate-500 hover:text-brand-200"
                               title={company.emailSource}
                             >
                               {company.emailSource.replace(/^https?:\/\//, '')}

@@ -136,7 +136,7 @@ export default function ActivityLog() {
                       {entry.companyId ? (
                         <Link
                           to={`/companies/${entry.companyId}`}
-                          className="text-[11px] font-medium text-brand-700 hover:underline"
+                          className="text-[11px] font-medium text-brand-300 hover:underline"
                         >
                           Company #{entry.companyId}
                         </Link>

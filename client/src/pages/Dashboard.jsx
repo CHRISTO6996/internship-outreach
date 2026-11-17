@@ -207,14 +207,14 @@ export default function Dashboard() {
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={statusData} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                  <XAxis dataKey="status" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
+                  <XAxis dataKey="status" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                   <Tooltip
-                    contentStyle={{ borderRadius: 12, borderColor: '#e2e8f0', fontSize: 12 }}
+                    contentStyle={{ borderRadius: 12, borderColor: 'rgba(255,255,255,0.12)', background: '#111936', color: '#e2e8f0', fontSize: 12 }}
                     formatter={(value) => [value, 'Companies']}
                   />
-                  <Bar dataKey="count" fill="#338ffb" radius={[6, 6, 0, 0]} maxBarSize={56} />
+                  <Bar dataKey="count" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={56} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -246,7 +246,7 @@ export default function Dashboard() {
                   <li key={check.id}>
                     <Link
                       to={check.href}
-                      className="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-50/40"
+                      className="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:border-brand-300 hover:bg-brand-500/150/150/15"
                     >
                       <span
                         className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg ${
@@ -259,7 +259,7 @@ export default function Dashboard() {
                         <span className="block text-sm font-medium text-slate-800">{check.title}</span>
                         <span className="mt-0.5 block text-xs text-slate-500">{check.detail}</span>
                       </span>
-                      <ArrowRight className="ml-auto mt-1 h-4 w-4 shrink-0 text-slate-300" />
+                      <ArrowRight className="ml-auto mt-1 h-4 w-4 shrink-0 text-slate-600" />
                     </Link>
                   </li>
                 );
@@ -293,7 +293,7 @@ export default function Dashboard() {
               <h2 className="text-base font-semibold text-slate-900">Recent companies</h2>
               <p className="text-xs text-slate-500">Latest additions and their discovery result.</p>
             </div>
-            <Link to="/companies" className="text-xs font-semibold text-brand-700 hover:text-brand-800">
+            <Link to="/companies" className="text-xs font-semibold text-brand-300 hover:text-brand-200">
               View all →
             </Link>
           </div>
@@ -314,7 +314,7 @@ export default function Dashboard() {
                   return (
                     <tr key={company.id} className="hover:bg-slate-50/60">
                       <td className="td">
-                        <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                        <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-200">
                           {company.name}
                         </Link>
                         <p className="text-xs text-slate-400">{company.domain || company.website || 'no website yet'}</p>
@@ -379,7 +379,7 @@ export default function Dashboard() {
             ))}
             {!data?.recentActivity?.length ? <li className="text-sm text-slate-500">No activity yet.</li> : null}
           </ul>
-          <Link to="/activity" className="mt-4 inline-flex text-xs font-semibold text-brand-700 hover:text-brand-800">
+          <Link to="/activity" className="mt-4 inline-flex text-xs font-semibold text-brand-300 hover:text-brand-200">
             Open full log →
           </Link>
         </Card>

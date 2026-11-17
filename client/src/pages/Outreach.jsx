@@ -359,7 +359,7 @@ export default function Outreach() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {eligible.map((row) => (
-                    <tr key={row.id} className={selectedSet.has(row.id) ? 'bg-brand-50/40' : 'hover:bg-slate-50/60'}>
+                    <tr key={row.id} className={selectedSet.has(row.id) ? 'bg-brand-500/150/15' : 'hover:bg-slate-50/60'}>
                       <td className="td">
                         <input
                           type="checkbox"
@@ -370,7 +370,7 @@ export default function Outreach() {
                         />
                       </td>
                       <td className="td">
-                        <Link to={`/companies/${row.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                        <Link to={`/companies/${row.id}`} className="font-medium text-slate-900 hover:text-brand-200">
                           {row.name}
                         </Link>
                         <p className="text-xs text-slate-400">{row.domain || '—'}</p>
@@ -387,7 +387,7 @@ export default function Outreach() {
                             href={row.sourceUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs font-medium text-brand-700 hover:underline"
+                            className="text-xs font-medium text-brand-300 hover:underline"
                           >
                             Public page
                           </a>
@@ -428,7 +428,7 @@ export default function Outreach() {
               <ul className="mt-2 space-y-1 text-xs text-slate-500">
                 {candidates.excluded.slice(0, 20).map((row) => (
                   <li key={row.id} className="flex flex-wrap justify-between gap-2">
-                    <Link to={`/companies/${row.id}`} className="font-medium text-slate-700 hover:text-brand-700">
+                    <Link to={`/companies/${row.id}`} className="font-medium text-slate-700 hover:text-brand-200">
                       {row.name}
                     </Link>
                     <span>{row.ineligibleReason}</span>
@@ -445,7 +445,7 @@ export default function Outreach() {
               <h2 className="text-base font-semibold text-slate-900">Recent emails</h2>
               <p className="text-xs text-slate-500">Prepared and sent records.</p>
             </div>
-            <Link to="/sent" className="text-xs font-semibold text-brand-700 hover:text-brand-800">
+            <Link to="/sent" className="text-xs font-semibold text-brand-300 hover:text-brand-200">
               All →
             </Link>
           </div>

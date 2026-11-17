@@ -307,7 +307,7 @@ export default function Integrations() {
                       </>
                     ) : (
                       <>
-                        <XCircle className="h-4 w-4 text-slate-300" />
+                        <XCircle className="h-4 w-4 text-slate-600" />
                         <span className="text-slate-400">Missing</span>
                       </>
                     )}
@@ -392,7 +392,7 @@ export default function Integrations() {
             <ol className="space-y-2.5">
               {guide.steps.map((step, index) => (
                 <li key={step} className="flex gap-3 text-sm text-slate-700">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-500/15 text-[11px] font-bold text-brand-300">
                     {index + 1}
                   </span>
                   <span>{step}</span>
@@ -400,7 +400,7 @@ export default function Integrations() {
               ))}
             </ol>
             <Alert tone="info">
-              Credentials belong in <code className="rounded bg-white/60 px-1">.env</code>, never in the browser. Restart the API
+              Credentials belong in <code className="rounded bg-white/10 px-1 text-brand-200">.env</code>, never in the browser. Restart the API
               after editing the file.
             </Alert>
             {guide.docsUrl ? (

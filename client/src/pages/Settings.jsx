@@ -276,7 +276,7 @@ export default function SettingsPage() {
                       key={token}
                       type="button"
                       onClick={() => insertPlaceholder(token)}
-                      className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600 hover:bg-brand-50 hover:text-brand-700"
+                      className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600 hover:bg-brand-500/150/15 hover:text-brand-200"
                     >
                       {`{{${token}}}`}
                     </button>
@@ -475,7 +475,7 @@ export default function SettingsPage() {
           <Alert tone="info" title="Privacy">
             <span className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-              All data stays in <code className="rounded bg-white/60 px-1">data/app.db</code> on this machine. OAuth refresh tokens are
+              All data stays in <code className="rounded bg-white/10 px-1 text-brand-200">data/app.db</code> on this machine. OAuth refresh tokens are
               encrypted at rest with TOKEN_ENCRYPTION_KEY.
             </span>
           </Alert>

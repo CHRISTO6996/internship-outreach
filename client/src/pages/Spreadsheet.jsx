@@ -139,7 +139,7 @@ export default function Spreadsheet() {
             <div className="rounded-xl bg-slate-50 px-3 py-2.5">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Spreadsheet</p>
               {sheetUrl ? (
-                <a href={sheetUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
+                <a href={sheetUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-300 hover:underline">
                   Open Google Sheet <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               ) : (
@@ -160,7 +160,7 @@ export default function Spreadsheet() {
             {!status?.gmail?.connected ? (
               <span className="text-xs text-slate-500">
                 Connect Google on the{' '}
-                <Link to="/integrations" className="font-semibold text-brand-700 hover:underline">
+                <Link to="/integrations" className="font-semibold text-brand-300 hover:underline">
                   Integrations
                 </Link>{' '}
                 page first.
@@ -191,7 +191,7 @@ export default function Spreadsheet() {
               'Notes',
             ].map((column, index) => (
               <div key={column} className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1.5 text-slate-600">
-                <span className="grid h-4 w-4 place-items-center rounded bg-white text-[9px] font-bold text-slate-500 ring-1 ring-slate-200">
+                <span className="grid h-4 w-4 place-items-center rounded bg-white/10 text-[9px] font-bold text-slate-600 ring-1 ring-white/10">
                   {index + 1}
                 </span>
                 <span className="truncate">{column}</span>
@@ -255,7 +255,7 @@ export default function Spreadsheet() {
                   return (
                     <tr key={company.id} className="hover:bg-slate-50/60">
                       <td className="td">
-                        <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                        <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-200">
                           {company.name}
                         </Link>
                       </td>
@@ -265,7 +265,7 @@ export default function Spreadsheet() {
                             href={company.website}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-700 hover:underline"
+                            className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-300 hover:underline"
                           >
                             <span className="truncate">{company.website.replace(/^https?:\/\//, '')}</span>
                             <ExternalLink className="h-3 w-3 shrink-0" />
@@ -281,7 +281,7 @@ export default function Spreadsheet() {
                             href={company.emailSource}
                             target="_blank"
                             rel="noreferrer"
-                            className="line-clamp-2 text-[11px] text-slate-500 hover:text-brand-700 hover:underline"
+                            className="line-clamp-2 text-[11px] text-slate-500 hover:text-brand-200 hover:underline"
                           >
                             {company.emailSource}
                           </a>
@@ -301,7 +301,7 @@ export default function Spreadsheet() {
                           <button
                             type="button"
                             onClick={() => copy(company.gmailMessageId)}
-                            className="inline-flex max-w-36 items-center gap-1 text-[11px] text-slate-600 hover:text-brand-700"
+                            className="inline-flex max-w-36 items-center gap-1 text-[11px] text-slate-600 hover:text-brand-200"
                             title={company.gmailMessageId}
                           >
                             <Copy className="h-3 w-3 shrink-0" />

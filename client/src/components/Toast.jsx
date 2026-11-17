@@ -11,10 +11,10 @@ const ICONS = {
 };
 
 const STYLES = {
-  success: 'border-emerald-200 bg-white text-emerald-700',
-  error: 'border-rose-200 bg-white text-rose-700',
-  warning: 'border-amber-200 bg-white text-amber-700',
-  info: 'border-slate-200 bg-white text-slate-700',
+  success: 'border-emerald-400/30 bg-[#111936] text-emerald-200',
+  error: 'border-rose-400/30 bg-[#111936] text-rose-200',
+  warning: 'border-amber-400/30 bg-[#111936] text-amber-200',
+  info: 'border-white/10 bg-[#111936] text-slate-600',
 };
 
 export function ToastProvider({ children }) {

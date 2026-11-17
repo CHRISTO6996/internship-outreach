@@ -230,7 +230,7 @@ export default function EmailFinder() {
                   {filtered.map((company) => {
                     const status = STATUS_META[company.status] || STATUS_META.pending;
                     return (
-                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-50/40' : 'hover:bg-slate-50/60'}>
+                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-500/150/15' : 'hover:bg-slate-50/60'}>
                         <td className="td">
                           <input
                             type="checkbox"
@@ -241,7 +241,7 @@ export default function EmailFinder() {
                           />
                         </td>
                         <td className="td">
-                          <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                          <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-200">
                             {company.name}
                           </Link>
                           <p className="text-[11px] text-slate-400">
@@ -250,7 +250,7 @@ export default function EmailFinder() {
                         </td>
                         <td className="td max-w-[180px] truncate text-xs text-slate-500">
                           {company.website ? (
-                            <a href={company.website} target="_blank" rel="noreferrer" className="hover:text-brand-700">
+                            <a href={company.website} target="_blank" rel="noreferrer" className="hover:text-brand-200">
                               {company.domain || company.website}
                             </a>
                           ) : (
@@ -379,7 +379,7 @@ export default function EmailFinder() {
                       </div>
                     </td>
                     <td className="td">
-                      <Link to={`/companies/${email.companyId}`} className="text-xs font-medium text-slate-700 hover:text-brand-700">
+                      <Link to={`/companies/${email.companyId}`} className="text-xs font-medium text-slate-700 hover:text-brand-200">
                         {email.companyName}
                       </Link>
                     </td>
@@ -398,7 +398,7 @@ export default function EmailFinder() {
                           href={email.sourceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-700 hover:underline"
+                          className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-300 hover:underline"
                         >
                           <Globe2 className="h-3 w-3 shrink-0" />
                           <span className="truncate">{email.sourceUrl.replace(/^https?:\/\//, '')}</span>

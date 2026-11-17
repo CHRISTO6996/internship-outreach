@@ -155,7 +155,7 @@ export default function FollowUps() {
                   return (
                     <tr key={row.id} className="hover:bg-slate-50/60">
                       <td className="td">
-                        <Link to={`/companies/${row.companyId}`} className="font-medium text-slate-900 hover:text-brand-700">
+                        <Link to={`/companies/${row.companyId}`} className="font-medium text-slate-900 hover:text-brand-200">
                           {row.companyName}
                         </Link>
                         <p className="text-[11px] text-slate-400">Follow-up #{row.id}</p>
@@ -190,7 +190,7 @@ export default function FollowUps() {
                             <>
                               <button
                                 type="button"
-                                className="btn-ghost !px-2 !py-1 text-xs text-brand-700"
+                                className="btn-ghost !px-2 !py-1 text-xs text-brand-300"
                                 onClick={() => queue([row.id])}
                                 disabled={busy !== null || !status?.gmail?.connected}
                               >
