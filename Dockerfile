@@ -17,9 +17,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 
-# Persist SQLite, uploads and resumes here (mount a volume at /data).
-RUN mkdir -p /data && chown -R node:node /data
-USER node
+# Persist SQLite, uploads and resumes here (attach a Railway volume at /data).
+RUN mkdir -p /data
 EXPOSE 4000
-VOLUME ["/data"]
 CMD ["node", "server/index.js"]
