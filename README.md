@@ -2,7 +2,7 @@
 
 A local, full-stack internship email automation system. Add companies, discover publicly listed HR/recruitment addresses, verify them, generate personalised internship requests, send them one at a time from your own Gmail account, and track replies and follow-ups.
 
-Everything runs on your machine. Company data lives in SQLite, API keys live in a backend `.env`, and no external service is called unless you configure it.
+By default everything runs on your machine. Company data lives in SQLite, API keys live in a backend `.env`, and no external service is called unless you configure it. The same codebase can also be deployed publicly as a Vercel frontend plus a Railway-hosted backend, with HTTP Basic Auth protecting the sending account.
 
 > **Honest defaults:** a fresh install has **zero integrations configured**. The dashboard, discovery, sending and Sheets pages will say so and disable the affected action instead of inventing data. You supply the website (or a search API key) until web search is configured, and emails stay `Unverified` until a verification API is configured.
 
@@ -83,6 +83,59 @@ npm run build     # outputs dist/
 npm start         # Express serves the API and the built SPA on http://127.0.0.1:4000
 ```
 
+### Public deployment (Vercel UI + Railway API)
+
+The public app uses two services from the same GitHub repository:
+
+| Layer | Platform | Source | Purpose |
+| --- | --- | --- | --- |
+| UI | Vercel | repository root, `npm run build`, output `dist/` | Static React build |
+| API | Railway | `Dockerfile` | Express + SQLite backend |
+
+`vercel.json` proxies every `/api/*` request from the Vercel domain to the Railway backend, so the browser only talks to one origin.
+
+1. **Railway backend**
+   - Deploy `CHRISTO6996/internship-outreach` as a Dockerfile service.
+   - Mount a persistent volume at `/data`.
+   - Set the environment variables below. Never put secrets in the repository.
+
+   ```env
+   NODE_ENV=production
+   HOST=[::]
+   PORT=4000
+   DATA_DIR=/data
+   APP_BASE_URL=https://internship-outreach-production.up.railway.app
+   CLIENT_BASE_URL=https://<your-vercel-project>.vercel.app
+   GOOGLE_REDIRECT_URI=https://internship-outreach-production.up.railway.app/api/integrations/google/callback
+   AUTH_USERNAME=admin
+   AUTH_PASSWORD=<strong unique password>
+   TOKEN_ENCRYPTION_KEY=<base64 from: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))">
+   ```
+
+   Add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and any search/verification keys only when you are ready to use those integrations.
+
+2. **Vercel frontend**
+   - Import `CHRISTO6996/internship-outreach`.
+   - Framework preset: **Vite**.
+   - Root directory: repository root.
+   - Build command: `npm run build`.
+   - Output directory: `dist`.
+   - No frontend environment variables are required.
+
+3. **Google OAuth**
+   - Add the Railway callback URL above to the authorised redirect URIs in Google Cloud.
+   - Set `CLIENT_BASE_URL` on Railway to the final Vercel URL so OAuth errors redirect back to the UI.
+
+4. **Access control check**
+
+   ```bash
+   curl https://internship-outreach-production.up.railway.app/api/health
+   curl -I https://internship-outreach-production.up.railway.app/api/dashboard/stats
+   curl -u admin:'<AUTH_PASSWORD>' https://internship-outreach-production.up.railway.app/api/dashboard/stats
+   ```
+
+   `GET /api/health` is the only public route. Every other API route must return `401` without Basic Auth and succeed with it. The Vercel domain will prompt for the same credentials before the UI can read data.
+
 ### Reset everything
 
 ```bash
@@ -108,6 +161,9 @@ All values are read by the backend only. Nothing secret is sent to the browser; 
 | `DATA_DIR` | `data` | SQLite database, uploads and resume storage |
 | `DATABASE_PATH` | `data/app.db` | Override the database file |
 | `LOG_LEVEL` | `info` | Server log verbosity |
+| `AUTH_USERNAME` | `admin` | HTTP Basic Auth username in production |
+| `AUTH_PASSWORD` | blank | Required in production; blocks access to the app and API when unset |
+| `ALLOW_PUBLIC_NO_AUTH` | `false` | Escape hatch for trusted private networks only; never enable on the public internet |
 
 ### Crawling
 
@@ -280,7 +336,8 @@ Missing integrations return `409` with `code: "integration_not_configured"` and 
 
 - Company data, emails, sends, replies, follow-ups and settings live in `data/app.db`.
 - OAuth refresh tokens are encrypted with AES-256-GCM using `TOKEN_ENCRYPTION_KEY`; plaintext tokens are never written to disk.
-- The server binds to `127.0.0.1` by default and sends no outbound request except to the services you configured.
+- The server binds to `127.0.0.1` by default locally; in production it binds to `HOST` and is protected by HTTP Basic Auth unless `ALLOW_PUBLIC_NO_AUTH=true` is explicitly set on a trusted private network.
+- `AUTH_PASSWORD` is required when `NODE_ENV=production`. The app refuses to start without it; `GET /api/health` remains public for uptime checks.
 - API keys are only read by the backend; the UI reports presence, never values.
 - CSV/Excel export includes only data already in the tracker.
 - `data/` and `.env` are git-ignored.
