@@ -276,7 +276,7 @@ export default function SettingsPage() {
                       key={token}
                       type="button"
                       onClick={() => insertPlaceholder(token)}
-                      className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600 hover:bg-brand-500/15 hover:text-brand-200"
+                      className="rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] text-slate-600 hover:bg-brand-50 hover:text-brand-700"
                     >
                       {`{{${token}}}`}
                     </button>
@@ -460,10 +460,10 @@ export default function SettingsPage() {
                 />
               </Field>
               <Toggle
-                checked={discovery.useHunter}
-                onChange={(value) => update('discovery', { useHunter: value })}
-                label="Use Hunter.io enrichment"
-                description="Queries indexed professional emails for the company domain when configured."
+                checked={discovery.usePingutil}
+                onChange={(value) => update('discovery', { usePingutil: value })}
+                label="Use Pingutil verification"
+                description="Uses Pingutil SMTP/MX & catch-all verification as a fallback when ZeroBounce is unavailable or unconfigured."
               />
               <button type="button" className="btn-primary w-full" onClick={() => save('discovery')} disabled={savingSection === 'discovery'}>
                 {savingSection === 'discovery' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -475,7 +475,7 @@ export default function SettingsPage() {
           <Alert tone="info" title="Privacy">
             <span className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-              All data stays in <code className="rounded bg-white/10 px-1 text-brand-200">data/app.db</code> on this machine. OAuth refresh tokens are
+              All data stays in <code className="rounded bg-slate-100 px-1">data/app.db</code> on this machine. OAuth refresh tokens are
               encrypted at rest with TOKEN_ENCRYPTION_KEY.
             </span>
           </Alert>

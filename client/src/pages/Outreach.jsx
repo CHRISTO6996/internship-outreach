@@ -31,6 +31,7 @@ export default function Outreach() {
   const [candidates, setCandidates] = useState(null);
   const [sends, setSends] = useState([]);
   const [selected, setSelected] = useState([]);
+  const [targetChoices, setTargetChoices] = useState({});
   const [busy, setBusy] = useState(null);
   const [preview, setPreview] = useState(null);
   const [lastSkipped, setLastSkipped] = useState([]);
@@ -98,8 +99,46 @@ export default function Outreach() {
     }
   }
 
+  function choiceFor(row) {
+    const raw = targetChoices[row.id];
+    if (raw === 'all' && row.availableCount > 1) return 'all';
+    const match = row.availableEmails?.find((item) => String(item.id) === String(raw));
+    if (match) return String(match.id);
+    return row.emailId ? String(row.emailId) : 'all';
+  }
+
+  function selectedEmailCount() {
+    let count = 0;
+    for (const companyId of selected) {
+      const row = eligible.find((item) => item.id === companyId);
+      if (!row) continue;
+      const choice = choiceFor(row);
+      count += choice === 'all' ? row.availableCount || 1 : 1;
+    }
+    return count;
+  }
+
+  function setAllModes(mode) {
+    const next = {};
+    for (const row of eligible) {
+      if (mode === 'all' && row.availableCount > 1) next[row.id] = 'all';
+      else if (row.emailId) next[row.id] = String(row.emailId);
+    }
+    setTargetChoices(next);
+  }
+
   async function prepare() {
-    const result = await run('prepare', '/outreach/prepare', { companyIds: selected, kind: 'initial' });
+    const targets = selected
+      .map((companyId) => {
+        const row = eligible.find((item) => item.id === companyId);
+        if (!row) return null;
+        const choice = choiceFor(row);
+        return choice === 'all'
+          ? { companyId, mode: 'all' }
+          : { companyId, mode: 'chosen', emailId: Number(choice) };
+      })
+      .filter(Boolean);
+    const result = await run('prepare', '/outreach/prepare', { targets, kind: 'initial' });
     if (!result) return;
     setLastSkipped(result.skipped || []);
     setSelected([]);
@@ -127,10 +166,16 @@ export default function Outreach() {
     load();
   }
 
-  async function openPreview(companyId) {
+  async function openPreview(row) {
     try {
-      const data = await api.get(`/outreach/preview/${companyId}`);
-      setPreview(data);
+      const choice = choiceFor(row);
+      const emailId = choice === 'all' ? row.availableEmails?.[0]?.id || row.emailId : Number(choice);
+      const query = emailId ? `?emailId=${emailId}` : '';
+      const data = await api.get(`/outreach/preview/${row.id}${query}`);
+      setPreview({
+        ...data,
+        recipientNote: choice === 'all' ? `Every email (${row.availableCount} recipients, sent individually)` : null,
+      });
     } catch (err) {
       toast.error(err.message);
     }
@@ -319,17 +364,39 @@ export default function Outreach() {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
             <div>
               <h2 className="text-base font-semibold text-slate-900">Companies ready for outreach</h2>
-              <p className="text-xs text-slate-500">Primary email found, not invalid, no initial request sent yet.</p>
+              <p className="text-xs text-slate-500">
+                Choose a specific discovered email or select &ldquo;Every email&rdquo; to send individually to all usable addresses.
+              </p>
             </div>
-            <button
-              type="button"
-              className="btn-primary !px-3 !py-2 text-xs"
-              onClick={prepare}
-              disabled={!selected.length || busy !== null}
-            >
-              {busy === 'prepare' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-              Prepare {selected.length || ''} email{selected.length === 1 ? '' : 's'}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {eligible.some((row) => row.availableCount > 1) ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn-secondary !px-2.5 !py-1.5 text-xs"
+                    onClick={() => setAllModes('all')}
+                  >
+                    Every email
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost !px-2.5 !py-1.5 text-xs"
+                    onClick={() => setAllModes('default')}
+                  >
+                    Default only
+                  </button>
+                </>
+              ) : null}
+              <button
+                type="button"
+                className="btn-primary !px-3 !py-2 text-xs"
+                onClick={prepare}
+                disabled={!selected.length || busy !== null}
+              >
+                {busy === 'prepare' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Prepare {selectedEmailCount() || ''} email{selectedEmailCount() === 1 ? '' : 's'}
+              </button>
+            </div>
           </div>
 
           {!candidates ? (
@@ -358,50 +425,95 @@ export default function Outreach() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {eligible.map((row) => (
-                    <tr key={row.id} className={selectedSet.has(row.id) ? 'bg-brand-500/15' : 'hover:bg-slate-50/60'}>
-                      <td className="td">
-                        <input
-                          type="checkbox"
-                          checked={selectedSet.has(row.id)}
-                          onChange={() => toggle(row.id)}
-                          aria-label={`Select ${row.name}`}
-                          className="h-4 w-4 rounded border-slate-300"
-                        />
-                      </td>
-                      <td className="td">
-                        <Link to={`/companies/${row.id}`} className="font-medium text-slate-900 hover:text-brand-200">
-                          {row.name}
-                        </Link>
-                        <p className="text-xs text-slate-400">{row.domain || '—'}</p>
-                      </td>
-                      <td className="td">{row.email}</td>
-                      <td className="td">
-                        <Badge tone={row.verification === 'verified' ? 'emerald' : row.verification === 'catch_all' ? 'violet' : 'amber'}>
-                          {row.verification === 'catch_all' ? 'Catch-all' : row.verification === 'verified' ? 'Verified' : 'Unverified'}
-                        </Badge>
-                      </td>
-                      <td className="td">
-                        {row.sourceUrl ? (
-                          <a
-                            href={row.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs font-medium text-brand-300 hover:underline"
-                          >
-                            Public page
-                          </a>
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="td">
-                        <button type="button" className="btn-ghost !px-2 !py-1" onClick={() => openPreview(row.id)} aria-label="Preview email">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {eligible.map((row) => {
+                    const choice = choiceFor(row);
+                    const activeItem =
+                      choice === 'all'
+                        ? row.availableEmails?.[0] || row
+                        : row.availableEmails?.find((item) => String(item.id) === choice) || row;
+                    return (
+                      <tr key={row.id} className={selectedSet.has(row.id) ? 'bg-brand-50/40' : 'hover:bg-slate-50/60'}>
+                        <td className="td">
+                          <input
+                            type="checkbox"
+                            checked={selectedSet.has(row.id)}
+                            onChange={() => toggle(row.id)}
+                            aria-label={`Select ${row.name}`}
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                        </td>
+                        <td className="td">
+                          <Link to={`/companies/${row.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                            {row.name}
+                          </Link>
+                          <p className="text-xs text-slate-400">
+                            {row.domain || '—'} · {row.availableCount} usable
+                          </p>
+                        </td>
+                        <td className="td">
+                          {row.availableEmails?.length > 1 ? (
+                            <select
+                              className="input !py-1.5 !text-xs"
+                              value={choice}
+                              onChange={(event) =>
+                                setTargetChoices((prev) => ({ ...prev, [row.id]: event.target.value }))
+                              }
+                              aria-label={`Choose target email for ${row.name}`}
+                            >
+                              <option value="all">Every email ({row.availableCount} addresses)</option>
+                              {row.availableEmails.map((item) => (
+                                <option key={item.id} value={String(item.id)}>
+                                  {item.email} ({item.category || 'contact'} · {item.verification})
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span>{activeItem.email}</span>
+                          )}
+                        </td>
+                        <td className="td">
+                          {choice === 'all' ? (
+                            <Badge tone="brand">All {row.availableCount}</Badge>
+                          ) : (
+                            <Badge
+                              tone={
+                                activeItem.verification === 'verified'
+                                  ? 'emerald'
+                                  : activeItem.verification === 'catch_all'
+                                    ? 'violet'
+                                    : 'amber'
+                              }
+                            >
+                              {activeItem.verification === 'catch_all'
+                                ? 'Catch-all'
+                                : activeItem.verification === 'verified'
+                                  ? 'Verified'
+                                  : 'Unverified'}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="td">
+                          {activeItem.sourceUrl ? (
+                            <a
+                              href={activeItem.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-medium text-brand-700 hover:underline"
+                            >
+                              Public page
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="td">
+                          <button type="button" className="btn-ghost !px-2 !py-1" onClick={() => openPreview(row)} aria-label="Preview email">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -428,7 +540,7 @@ export default function Outreach() {
               <ul className="mt-2 space-y-1 text-xs text-slate-500">
                 {candidates.excluded.slice(0, 20).map((row) => (
                   <li key={row.id} className="flex flex-wrap justify-between gap-2">
-                    <Link to={`/companies/${row.id}`} className="font-medium text-slate-700 hover:text-brand-200">
+                    <Link to={`/companies/${row.id}`} className="font-medium text-slate-700 hover:text-brand-700">
                       {row.name}
                     </Link>
                     <span>{row.ineligibleReason}</span>
@@ -445,7 +557,7 @@ export default function Outreach() {
               <h2 className="text-base font-semibold text-slate-900">Recent emails</h2>
               <p className="text-xs text-slate-500">Prepared and sent records.</p>
             </div>
-            <Link to="/sent" className="text-xs font-semibold text-brand-300 hover:text-brand-200">
+            <Link to="/sent" className="text-xs font-semibold text-brand-700 hover:text-brand-800">
               All →
             </Link>
           </div>
@@ -492,7 +604,7 @@ export default function Outreach() {
           <div className="rounded-xl border border-slate-200">
             <div className="space-y-1 border-b border-slate-100 px-4 py-2.5 text-xs text-slate-500">
               <p>
-                <span className="font-semibold text-slate-700">To:</span> {preview.toEmail}
+                <span className="font-semibold text-slate-700">To:</span> {preview.recipientNote || preview.toEmail}
               </p>
               <p>
                 <span className="font-semibold text-slate-700">Subject:</span> {preview.subject}

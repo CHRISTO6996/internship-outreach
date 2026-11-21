@@ -167,7 +167,7 @@ export default function AddCompanies() {
                   type="button"
                   onClick={() => setTab(item.id)}
                   className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition sm:text-sm ${
-                    tab === item.id ? 'bg-white/10 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-400 hover:text-slate-600'
+                    tab === item.id ? 'bg-surface text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -266,7 +266,7 @@ export default function AddCompanies() {
                   type="file"
                   accept=".csv,.txt,.tsv,.xlsx,.xlsm"
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
-                  className="mx-auto mt-4 block w-full max-w-sm text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-white/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-slate-600 file:shadow-sm file:ring-1 file:ring-white/10"
+                  className="mx-auto mt-4 block w-full max-w-sm text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-slate-700 file:shadow-sm file:ring-1 file:ring-slate-200"
                 />
                 {file ? <p className="mt-2 text-xs text-slate-500">{file.name} · {Math.round(file.size / 1024)} KB</p> : null}
               </div>
@@ -332,7 +332,7 @@ export default function AddCompanies() {
                   {result.created.slice(0, 12).map((company) => (
                     <div key={company.id} className="flex items-center gap-2 text-sm text-slate-700">
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
-                      <Link to={`/companies/${company.id}`} className="truncate hover:text-brand-200">
+                      <Link to={`/companies/${company.id}`} className="truncate hover:text-brand-700">
                         {company.name}
                       </Link>
                     </div>
@@ -372,7 +372,7 @@ export default function AddCompanies() {
                   'Public addresses are extracted, scored, and verified before anything is sent.',
                 ].map((step, index) => (
                   <li key={step} className="flex gap-3">
-                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-500/15 text-[11px] font-bold text-brand-300">
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">
                       {index + 1}
                     </span>
                     <span>{step}</span>

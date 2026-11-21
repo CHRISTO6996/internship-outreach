@@ -1,9 +1,10 @@
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { rootDir, server as serverConfig, dataDir, databasePath, access } from './config.js';
 import { db } from './db/index.js';
+import { authRouter } from './routes/auth.js';
+import { sessionUser } from './lib/session.js';
 import { companiesRouter } from './routes/companies.js';
 import { jobsRouter } from './routes/jobs.js';
 import { dashboardRouter } from './routes/dashboard.js';
@@ -35,34 +36,34 @@ app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '2mb' }));
 
-function secureEqual(a, b) {
-  const left = Buffer.from(String(a ?? ''));
-  const right = Buffer.from(String(b ?? ''));
-  if (left.length !== right.length) return false;
-  return crypto.timingSafeEqual(left, right);
-}
+const PUBLIC_API_ROUTES = new Set([
+  '/api/health',
+  '/api/auth/session',
+  '/api/auth/login',
+  '/api/auth/logout',
+]);
 
 /**
- * HTTP Basic Auth guard. Enabled whenever AUTH_PASSWORD is set, and mandatory
- * in production. Health checks stay public so hosting platforms can probe them.
+ * Protects the API with either a signed HttpOnly session cookie (the React
+ * login page) or HTTP Basic Auth (scripts, curl and hosting checks). Static
+ * files stay public so the login page can load. Enabled whenever AUTH_PASSWORD
+ * is set, and mandatory in production.
  */
 app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/')) return next();
   if (!access.enabled) return next();
-  // Google redirects the browser here without an Authorization header. The one-time state parameter is validated during token exchange.
-  if (req.path === '/api/health' || (req.method === 'GET' && req.path === '/api/integrations/google/callback')) return next();
-  const header = req.headers.authorization || '';
-  if (header.startsWith('Basic ')) {
-    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
-    const separator = decoded.indexOf(':');
-    const username = separator === -1 ? decoded : decoded.slice(0, separator);
-    const password = separator === -1 ? '' : decoded.slice(separator + 1);
-    if (secureEqual(username, access.username) && secureEqual(password, access.password)) {
-      res.setHeader('Cache-Control', 'no-store');
-      return next();
-    }
+  if (PUBLIC_API_ROUTES.has(req.path)) return next();
+  // Google redirects the browser here without credentials. The one-time state
+  // parameter is validated during token exchange.
+  if (req.method === 'GET' && req.path === '/api/integrations/google/callback') return next();
+  if (sessionUser(req)) {
+    res.setHeader('Cache-Control', 'no-store');
+    return next();
   }
-  res.setHeader('WWW-Authenticate', 'Basic realm="Internship Outreach", charset="UTF-8"');
-  res.status(401).type('text').send('Authentication required');
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(401).json({
+    error: { message: 'Authentication required', code: 'unauthorized' },
+  });
 });
 
 app.use((req, res, next) => {
@@ -83,6 +84,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/companies', companiesRouter);
 app.use('/api/jobs', jobsRouter);

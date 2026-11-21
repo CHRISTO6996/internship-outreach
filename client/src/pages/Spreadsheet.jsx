@@ -10,9 +10,12 @@ import {
   RefreshCw,
   Search,
   Table2,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { PageHeader } from '../components/Layout.jsx';
 import { Alert, Badge, Card, EmptyState, SectionHeading } from '../components/ui.jsx';
+import { DeleteCompanyModal, EditCompanyModal } from '../components/CompanyModals.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api, downloadExport } from '../lib/api.js';
 import {
@@ -35,6 +38,9 @@ export default function Spreadsheet() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -91,6 +97,21 @@ export default function Spreadsheet() {
     }
   }
 
+  async function deleteCompany() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    try {
+      await api.del(`/companies/${deleting.id}`);
+      toast.success(`"${deleting.name}" deleted.`);
+      setDeleting(null);
+      load();
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   const sheet = status?.sheets;
   const sheetUrl = sheet?.spreadsheetId
     ? `https://docs.google.com/spreadsheets/d/${sheet.spreadsheetId}/edit`
@@ -139,7 +160,7 @@ export default function Spreadsheet() {
             <div className="rounded-xl bg-slate-50 px-3 py-2.5">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Spreadsheet</p>
               {sheetUrl ? (
-                <a href={sheetUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-300 hover:underline">
+                <a href={sheetUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
                   Open Google Sheet <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               ) : (
@@ -160,7 +181,7 @@ export default function Spreadsheet() {
             {!status?.gmail?.connected ? (
               <span className="text-xs text-slate-500">
                 Connect Google on the{' '}
-                <Link to="/integrations" className="font-semibold text-brand-300 hover:underline">
+                <Link to="/integrations" className="font-semibold text-brand-700 hover:underline">
                   Integrations
                 </Link>{' '}
                 page first.
@@ -191,7 +212,7 @@ export default function Spreadsheet() {
               'Notes',
             ].map((column, index) => (
               <div key={column} className="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-1.5 text-slate-600">
-                <span className="grid h-4 w-4 place-items-center rounded bg-white/10 text-[9px] font-bold text-slate-600 ring-1 ring-white/10">
+                <span className="grid h-4 w-4 place-items-center rounded bg-surface text-[9px] font-bold text-slate-500 ring-1 ring-slate-200">
                   {index + 1}
                 </span>
                 <span className="truncate">{column}</span>
@@ -242,6 +263,7 @@ export default function Spreadsheet() {
                   <th className="th">Reply Details</th>
                   <th className="th">Follow-up Status</th>
                   <th className="th">Notes</th>
+                  <th className="th text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -255,7 +277,7 @@ export default function Spreadsheet() {
                   return (
                     <tr key={company.id} className="hover:bg-slate-50/60">
                       <td className="td">
-                        <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-200">
+                        <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-700">
                           {company.name}
                         </Link>
                       </td>
@@ -265,7 +287,7 @@ export default function Spreadsheet() {
                             href={company.website}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-300 hover:underline"
+                            className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-700 hover:underline"
                           >
                             <span className="truncate">{company.website.replace(/^https?:\/\//, '')}</span>
                             <ExternalLink className="h-3 w-3 shrink-0" />
@@ -281,7 +303,7 @@ export default function Spreadsheet() {
                             href={company.emailSource}
                             target="_blank"
                             rel="noreferrer"
-                            className="line-clamp-2 text-[11px] text-slate-500 hover:text-brand-200 hover:underline"
+                            className="line-clamp-2 text-[11px] text-slate-500 hover:text-brand-700 hover:underline"
                           >
                             {company.emailSource}
                           </a>
@@ -301,7 +323,7 @@ export default function Spreadsheet() {
                           <button
                             type="button"
                             onClick={() => copy(company.gmailMessageId)}
-                            className="inline-flex max-w-36 items-center gap-1 text-[11px] text-slate-600 hover:text-brand-200"
+                            className="inline-flex max-w-36 items-center gap-1 text-[11px] text-slate-600 hover:text-brand-700"
                             title={company.gmailMessageId}
                           >
                             <Copy className="h-3 w-3 shrink-0" />
@@ -328,6 +350,26 @@ export default function Spreadsheet() {
                       </td>
                       <td className="td max-w-56">
                         <span className="line-clamp-2 text-xs text-slate-500">{company.notes || '—'}</span>
+                      </td>
+                      <td className="td">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditing(company)}
+                            className="btn-ghost !px-2 !py-1 text-xs"
+                            title="Edit company"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleting(company)}
+                            className="btn-ghost !px-2 !py-1 text-xs text-rose-600 hover:bg-rose-50"
+                            title="Delete company"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -361,6 +403,19 @@ export default function Spreadsheet() {
           Auto-updated from the database. Export is available even when Google Sheets is offline.
         </div>
       </Card>
+
+      <EditCompanyModal
+        company={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => load()}
+      />
+
+      <DeleteCompanyModal
+        company={deleting}
+        busy={deleteBusy}
+        onClose={() => setDeleting(null)}
+        onConfirm={deleteCompany}
+      />
     </>
   );
 }

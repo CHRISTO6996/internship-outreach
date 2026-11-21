@@ -2,9 +2,9 @@
 
 A local, full-stack internship email automation system. Add companies, discover publicly listed HR/recruitment addresses, verify them, generate personalised internship requests, send them one at a time from your own Gmail account, and track replies and follow-ups.
 
-By default everything runs on your machine. Company data lives in SQLite, API keys live in a backend `.env`, and no external service is called unless you configure it. The same codebase can also be deployed publicly as a Vercel frontend plus a Railway-hosted backend, with HTTP Basic Auth protecting the sending account.
+By default everything runs on your machine. Company data lives in SQLite, API keys live in a backend `.env`, and no external service is called unless you configure it. The same codebase can also be deployed publicly as a Vercel frontend plus a Railway-hosted backend, protected by a username/password login screen.
 
-> **Honest defaults:** a fresh install has **zero integrations configured**. The dashboard, discovery, sending and Sheets pages will say so and disable the affected action instead of inventing data. You supply the website (or a search API key) until web search is configured, and emails stay `Unverified` until a verification API is configured.
+> **Honest defaults:** a fresh install has **zero paid integrations configured**. The dashboard, discovery, sending and Sheets pages will say so and disable the affected action instead of inventing data. Company websites resolve through Wikidata/Wikipedia and keyless search even with no paid key; emails stay `Unverified` until a verification API is configured.
 
 ---
 
@@ -13,9 +13,9 @@ By default everything runs on your machine. Company data lives in SQLite, API ke
 | Stage | Behaviour |
 | --- | --- |
 | Add companies | Single form, multi-line paste, Excel/CSV upload, or public Google Sheets import. Duplicates are rejected. |
-| Find a website | Uses SerpAPI or Google Programmable Search when configured. Without a search API, supply the website/domain and the app verifies the domain identity. |
-| Discover emails | Crawls the company site (robots.txt aware) starting from Contact/About/Careers/Recruitment/Internship pages, extracts and de-obfuscates addresses, and stores the source URL for each one. |
-| Verify | DNS MX pre-screen first, then ZeroBounce, then Hunter (if configured), otherwise the address stays `Unverified`. Addresses with no MX are marked `Invalid`. |
+| Find a website | Wikidata/Wikipedia first (authoritative `P856`), then SerpAPI / Google CSE, then a keyless DuckDuckGo → Bing-via-Jina fallback, then strong identity-checked domain probing. Supply the website manually at any time. |
+| Discover emails | Crawls the company site (robots.txt aware) starting from Contact/About/Careers/Recruitment/Internship pages, extracts and de-obfuscates addresses, and stores the source URL for each one. Search snippets and blocked/JS-only pages are read through Jina Reader as a fallback. |
+| Verify | DNS MX pre-screen first, then Pingutil, then ZeroBounce, then Hunter (if configured), otherwise the address stays `Unverified`. Addresses with no MX are marked `Invalid`. |
 | Pick a primary email | Only role mailboxes (`hr`, `recruitment`, `careers`, `internship`, `general`) are promoted. No readable mailbox → `Email Not Found`. |
 | Generate email | Renders your template with your profile details for that specific company. |
 | Send | Gmail API, one message per company, PDF resume attached where present. No CC/BCC bulk sends. Duplicate sends are prevented. Message IDs and timestamps are stored. |
@@ -136,7 +136,7 @@ The live frontend is https://internship-outreach-eight.vercel.app. A catch-all r
    curl -u admin:'<AUTH_PASSWORD>' https://internship-outreach-production.up.railway.app/api/dashboard/stats
    ```
 
-   `GET /api/health` and `GET /api/integrations/google/callback` are the only public routes; the callback protects itself with a one-time OAuth `state` value. Every other API route must return `401` without Basic Auth and succeed with it. The Vercel domain will prompt for the same credentials before the UI can read data.
+   `GET /api/health`, the auth endpoints (`/api/auth/session|login|logout`) and `GET /api/integrations/google/callback` are the only public routes; the callback protects itself with a one-time OAuth `state` value. Every other API route returns `401` until the browser logs in (signed session cookie) or sends HTTP Basic Auth credentials. The Vercel domain shows the same login screen before the UI can read data.
 
 ### Reset everything
 
@@ -163,7 +163,7 @@ All values are read by the backend only. Nothing secret is sent to the browser; 
 | `DATA_DIR` | `data` | SQLite database, uploads and resume storage |
 | `DATABASE_PATH` | `data/app.db` | Override the database file |
 | `LOG_LEVEL` | `info` | Server log verbosity |
-| `AUTH_USERNAME` | `admin` | HTTP Basic Auth username in production |
+| `AUTH_USERNAME` | `admin` | Login username (also accepted as HTTP Basic Auth) |
 | `AUTH_PASSWORD` | blank | Required in production; blocks access to the app and API when unset |
 | `ALLOW_PUBLIC_NO_AUTH` | `false` | Escape hatch for trusted private networks only; never enable on the public internet |
 
@@ -174,19 +174,20 @@ All values are read by the backend only. Nothing secret is sent to the browser; 
 | `CRAWL_MAX_PAGES` | `12` | Maximum pages per website |
 | `CRAWL_TIMEOUT_MS` | `12000` | Per-request timeout |
 | `CRAWL_DELAY_MS` | `250` | Delay between page requests |
-| `CRAWL_USER_AGENT` | `InternshipOutreachBot/0.1 …` | Identifies the crawler; it respects robots.txt |
+| `CRAWL_USER_AGENT` | Chrome user agent | Browser-like UA avoids blanket 403s; robots.txt is still respected |
 
 ### Discovery and verification (optional)
 
 | Variable | Service | Effect when missing |
 | --- | --- | --- |
-| `SEARCH_PROVIDER` | `auto` \| `serpapi` \| `google_cse` \| `none` | Company names cannot be resolved to websites |
-| `SERPAPI_KEY` | SerpAPI | Same as above |
-| `GOOGLE_CSE_KEY`, `GOOGLE_CSE_CX` | Google Programmable Search | Same as above |
+| `SEARCH_PROVIDER` | `auto` \| `serpapi` \| `google_cse` \| `duckduckgo` \| `none` | Keyless fallbacks still resolve most websites |
+| `SERPAPI_KEY` | SerpAPI | Falls back to Google CSE → DuckDuckGo → Bing/Jina |
+| `GOOGLE_CSE_KEY`, `GOOGLE_CSE_CX` | Google Programmable Search | Falls back to the keyless providers |
+| `SEARCH_KEYLESS_FALLBACK` | `true` | DuckDuckGo HTML fallback for search |
+| `SEARCH_JINA_FALLBACK` | `true` | Bing-through-Jina Reader fallback; also reads blocked/JS-only pages |
 | `HUNTER_API_KEY` | Hunter.io | No indexed email enrichment |
-| `ZEROBOUNCE_API_KEY` | ZeroBounce | Addresses stay `Unverified` (DNS MX only) |
-| `APOLLO_API_KEY` | Apollo.io | Optional enrichment unavailable |
-| `SNOV_CLIENT_ID`, `SNOV_CLIENT_SECRET` | Snov.io | Optional enrichment unavailable |
+| `PINGUTIL_API_KEY` | Pingutil | First verification provider; without it verification starts at ZeroBounce or stays DNS-only |
+| `ZEROBOUNCE_API_KEY` | ZeroBounce | Next verification provider; addresses stay `Unverified` when no verifier is configured |
 
 ### Google (Gmail + Sheets)
 
@@ -303,12 +304,19 @@ server/
   routes/               companies, jobs, dashboard, settings, integrations,
                         emails, activity, export, outreach
   services/
-    discovery.js        website resolution, crawler, email extraction
-    verify.js           MX, ZeroBounce, Hunter, primary selection
+    website.js          Wikidata/Wikipedia + search + domain identity resolution
+    search.js           SerpAPI, Google CSE, DuckDuckGo, Bing-via-Jina
+    crawl.js            robots-aware crawler with Jina Reader fallback
+    extract.js          email extraction / de-obfuscation / source URLs
+    discover.js         end-to-end discovery pipeline and primary selection
+    verify.js           MX → Pingutil → ZeroBounce → Hunter
+    pingutil.js         Pingutil mailbox verification client
     jobs.js             in-process discovery queue
     google.js           OAuth, encrypted tokens, Gmail send/read
     outreach.js         send queue, approval, follow-ups, reply polling
     sheets.js           Google Sheets tracker mirror
+  lib/session.js        signed session cookie for the login screen
+  routes/auth.js        /api/auth/session|login|logout
 client/src/
   App.jsx               layout and routes
   pages/                12 application pages
@@ -321,6 +329,7 @@ dist/                   production build output
 ### API surface (all `/api`)
 
 - `GET /health`
+- `GET /auth/session`, `POST /auth/login|logout`
 - `GET /dashboard/stats`, `GET /dashboard/readiness`
 - `GET|POST /companies`, `GET|PATCH|DELETE /companies/:id`, bulk/import/discover/emails endpoints
 - `GET|POST /jobs`, SSE stream, pause/resume/stop
@@ -340,7 +349,7 @@ Missing integrations return `409` with `code: "integration_not_configured"` and 
 
 - Company data, emails, sends, replies, follow-ups and settings live in `data/app.db`.
 - OAuth refresh tokens are encrypted with AES-256-GCM using `TOKEN_ENCRYPTION_KEY`; plaintext tokens are never written to disk.
-- The server binds to `127.0.0.1` by default locally; in production it binds to `HOST` and is protected by HTTP Basic Auth unless `ALLOW_PUBLIC_NO_AUTH=true` is explicitly set on a trusted private network.
+- The server binds to `127.0.0.1` by default locally; in production it binds to `HOST` and is protected by the login screen (signed session cookie) with HTTP Basic Auth accepted for scripts, unless `ALLOW_PUBLIC_NO_AUTH=true` is explicitly set on a trusted private network.
 - `AUTH_PASSWORD` is required when `NODE_ENV=production`. The app refuses to start without it; `GET /api/health` remains public for uptime checks.
 - API keys are only read by the backend; the UI reports presence, never values.
 - CSV/Excel export includes only data already in the tracker.
@@ -365,7 +374,7 @@ Automated outreach must comply with the law and with each provider's terms. In p
 
 **The dashboard says an integration is not configured.** That is correct until the listed environment variable exists in `.env` and the API is restarted. The Integrations page shows exactly which keys are missing.
 
-**A company website returns 403 during discovery.** Many corporate sites block non-browser clients. The app surfaces the error honestly rather than spoofing a browser. Add the address manually or configure Hunter.io.
+**A company website returns 403 during discovery.** Many corporate sites block non-browser clients. The crawler first tries a browser-like user agent, then falls back to Jina Reader for blocked or JavaScript-only pages; if both fail the error is shown honestly. You can always add the address manually.
 
 **A company gets "Email Not Found".** Addresses existed but none was an HR/recruitment/careers/general mailbox, or none passed MX. Open the company and check the discovery log; you can add a known address manually.
 
@@ -383,8 +392,9 @@ Automated outreach must comply with the law and with each provider's terms. In p
 
 ## Current limitations
 
-- No search provider, discovery enrichment or paid verification is bundled. Without keys the app relies on websites you supply and DNS MX checks.
-- Gmail sending, reply polling and Sheets sync cannot be exercised until you create the OAuth client and connect an account.
+- **No paid search key is required** anymore: Wikidata/Wikipedia, DuckDuckGo and Bing-through-Jina keep name-to-website discovery working. Paid keys (SerpAPI, Google CSE) are faster and more precise.
+- Verification is only as strong as the configured provider. Pingutil often returns `unknown / smtp_unavailable` for role mailboxes, so those addresses are honestly shown as `Unverified` rather than being promoted to `Verified`.
+- Gmail sending, reply polling and Sheets sync still require you to create the OAuth client and connect an account.
 - The crawler is intentionally polite and does not defeat bot protection.
 - The discovery and send queues are in-process; they pause when the server stops.
 - Reply classification is keyword-based and can be overridden manually.

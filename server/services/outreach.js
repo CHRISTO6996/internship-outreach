@@ -102,7 +102,9 @@ function valuesForCompany(company) {
     college: profile.college || '',
     branch: profile.branch || '',
     phone: profile.phone || '',
-    contactEmail: profile.contactEmail || '',
+    // Fall back to the connected Gmail address so every signature has a real
+    // reply-to address even before the profile form is filled in.
+    contactEmail: profile.contactEmail || googleAccount()?.email || '',
     portfolioUrl: profile.portfolioUrl || '',
     linkedinUrl: profile.linkedinUrl || '',
   };
@@ -740,7 +742,7 @@ export function stopSendQueue() {
   return statusSnapshot();
 }
 
-function classifyReply(subject, body) {
+export function classifyReply(subject, body) {
   const text = `${subject || ''}\n${body || ''}`.toLowerCase();
   if (
     /unfortunately|regret to inform|not (been )?(selected|shortlisted)|not moving forward|no (current )?(openings?|vacanc|positions?)|position (has been|is) filled|unable to (offer|consider)|we (will|can) not (be able to )?(offer|proceed)/.test(

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search,
   RefreshCw,
   Download,
   FileSpreadsheet,
   Trash2,
+  Pencil,
   ExternalLink,
   Play,
   ChevronLeft,
@@ -14,7 +15,8 @@ import {
   Filter,
 } from 'lucide-react';
 import { PageHeader } from '../components/Layout.jsx';
-import { Badge, Card, EmptyState, Modal, SectionHeading, Skeleton } from '../components/ui.jsx';
+import { Badge, Card, EmptyState, Skeleton } from '../components/ui.jsx';
+import { DeleteCompanyModal, EditCompanyModal } from '../components/CompanyModals.jsx';
 import { useJobs } from '../components/JobContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api, downloadExport } from '../lib/api.js';
@@ -30,14 +32,25 @@ const EMAIL_STATUS = {
 };
 
 export default function CompanyDatabase() {
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ search: '', status: '', verification: '', emailStatus: '' });
-  const [applied, setApplied] = useState({ search: '', status: '', verification: '', emailStatus: '' });
+  const [filters, setFilters] = useState({ search: urlSearch, status: '', verification: '', emailStatus: '' });
+  const [applied, setApplied] = useState({ search: urlSearch, status: '', verification: '', emailStatus: '' });
+
+  // The sidebar search links here with ?search=...; keep the filter in sync when it changes.
+  useEffect(() => {
+    setPage(0);
+    setFilters((current) => ({ ...current, search: urlSearch }));
+    setApplied((current) => ({ ...current, search: urlSearch }));
+  }, [urlSearch]);
   const [selected, setSelected] = useState(new Set());
+  const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const toast = useToast();
   const { start, busy, version } = useJobs();
@@ -76,17 +89,25 @@ export default function CompanyDatabase() {
   }
 
   async function deleteCompany() {
-    if (!deleting) return;
+    if (!deleting && !bulkDeleting) return;
     setDeleteBusy(true);
     try {
-      await api.del(`/companies/${deleting.id}`);
-      toast.success(`"${deleting.name}" deleted.`);
-      setDeleting(null);
-      setSelected((current) => {
-        const next = new Set(current);
-        next.delete(deleting.id);
-        return next;
-      });
+      if (bulkDeleting) {
+        const ids = [...selected];
+        const res = await api.post('/companies/bulk-delete', { ids });
+        toast.success(`Deleted ${res.deleted} company(ies).`);
+        setBulkDeleting(false);
+        setSelected(new Set());
+      } else {
+        await api.del(`/companies/${deleting.id}`);
+        toast.success(`"${deleting.name}" deleted.`);
+        setDeleting(null);
+        setSelected((current) => {
+          const next = new Set(current);
+          next.delete(deleting.id);
+          return next;
+        });
+      }
       load();
     } catch (error) {
       toast.error(error.message);
@@ -175,11 +196,19 @@ export default function CompanyDatabase() {
         </form>
 
         {selected.size ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-500/15 px-3 py-2">
-            <p className="text-xs font-medium text-brand-200">{selected.size} selected</p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-brand-50 px-3 py-2">
+            <p className="text-xs font-medium text-brand-800">{selected.size} selected</p>
             <div className="flex gap-2">
               <button type="button" className="btn-ghost !py-1.5 text-xs" onClick={() => setSelected(new Set())}>
                 Clear
+              </button>
+              <button
+                type="button"
+                className="btn-danger !py-1.5 text-xs"
+                onClick={() => setBulkDeleting(true)}
+                disabled={busy}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete selected
               </button>
               <button type="button" className="btn-primary !py-1.5 text-xs" onClick={runSelected} disabled={busy}>
                 <Play className="h-3.5 w-3.5" /> Find emails
@@ -238,7 +267,7 @@ export default function CompanyDatabase() {
                     const verification = VERIFICATION_META[company.verification] || VERIFICATION_META.unverified;
                     const emailStatus = EMAIL_STATUS[company.emailStatus] || EMAIL_STATUS.not_sent;
                     return (
-                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-500/15' : 'hover:bg-slate-50/60'}>
+                      <tr key={company.id} className={selected.has(company.id) ? 'bg-brand-50/30' : 'hover:bg-slate-50/60'}>
                         <td className="td">
                           <input
                             type="checkbox"
@@ -256,7 +285,7 @@ export default function CompanyDatabase() {
                           />
                         </td>
                         <td className="td">
-                          <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-200">
+                          <Link to={`/companies/${company.id}`} className="font-medium text-slate-900 hover:text-brand-700">
                             {company.name}
                           </Link>
                           <div className="mt-0.5 flex items-center gap-1.5">
@@ -272,7 +301,7 @@ export default function CompanyDatabase() {
                               href={company.website}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-300 hover:underline"
+                              className="inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-700 hover:underline"
                             >
                               <span className="truncate">{company.domain || company.website}</span>
                               <ExternalLink className="h-3 w-3 shrink-0" />
@@ -297,7 +326,7 @@ export default function CompanyDatabase() {
                               href={company.emailSource}
                               target="_blank"
                               rel="noreferrer"
-                              className="block truncate text-xs text-slate-500 hover:text-brand-200"
+                              className="block truncate text-xs text-slate-500 hover:text-brand-700"
                               title={company.emailSource}
                             >
                               {company.emailSource.replace(/^https?:\/\//, '')}
@@ -341,6 +370,14 @@ export default function CompanyDatabase() {
                               title="Run email discovery"
                             >
                               <Play className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditing(company)}
+                              className="btn-ghost !px-2 !py-1 text-xs"
+                              title="Edit company"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <Link to={`/companies/${company.id}`} className="btn-ghost !px-2 !py-1 text-xs" title="Open details">
                               <ExternalLink className="h-3.5 w-3.5" />
@@ -400,26 +437,22 @@ export default function CompanyDatabase() {
         </div>
       </Card>
 
-      <Modal
-        open={Boolean(deleting)}
-        onClose={() => setDeleting(null)}
-        title="Delete company?"
-        description={deleting ? `"${deleting.name}" and its discovered emails, sends and replies will be removed.` : ''}
-        footer={
-          <>
-            <button type="button" className="btn-secondary" onClick={() => setDeleting(null)}>
-              Cancel
-            </button>
-            <button type="button" className="btn-danger" onClick={deleteCompany} disabled={deleteBusy}>
-              <Trash2 className="h-4 w-4" /> Delete permanently
-            </button>
-          </>
-        }
-      >
-        <p className="text-sm text-slate-600">
-          This cannot be undone. Export the spreadsheet first if you want a copy of the history.
-        </p>
-      </Modal>
+      <EditCompanyModal
+        company={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => load()}
+      />
+
+      <DeleteCompanyModal
+        company={deleting}
+        count={bulkDeleting ? selected.size : 0}
+        busy={deleteBusy}
+        onClose={() => {
+          setDeleting(null);
+          setBulkDeleting(false);
+        }}
+        onConfirm={deleteCompany}
+      />
     </>
   );
 }

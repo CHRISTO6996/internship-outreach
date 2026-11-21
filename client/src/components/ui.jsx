@@ -2,13 +2,13 @@ import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 const TONES = {
-  slate: 'bg-white/5 text-slate-600 ring-white/10',
-  blue: 'bg-sky-500/10 text-sky-200 ring-sky-400/30',
-  emerald: 'bg-emerald-500/10 text-emerald-200 ring-emerald-400/30',
-  amber: 'bg-amber-500/10 text-amber-200 ring-amber-400/30',
-  rose: 'bg-rose-500/10 text-rose-200 ring-rose-400/30',
-  violet: 'bg-violet-500/10 text-violet-200 ring-violet-400/30',
-  brand: 'bg-brand-500/10 text-brand-200 ring-brand-400/30',
+  slate: 'bg-slate-100 text-slate-700 ring-slate-200',
+  blue: 'bg-sky-50 text-sky-700 ring-sky-200',
+  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  amber: 'bg-amber-50 text-amber-800 ring-amber-200',
+  rose: 'bg-rose-50 text-rose-700 ring-rose-200',
+  violet: 'bg-violet-50 text-violet-700 ring-violet-200',
+  brand: 'bg-brand-50 text-brand-700 ring-brand-200',
 };
 
 const DOT_TONES = {
@@ -18,7 +18,7 @@ const DOT_TONES = {
   amber: 'bg-amber-500',
   rose: 'bg-rose-500',
   violet: 'bg-violet-500',
-  brand: 'bg-brand-500/15',
+  brand: 'bg-brand-500',
 };
 
 export function Badge({ tone = 'slate', dot = false, children, className = '' }) {
@@ -51,27 +51,32 @@ export function SectionHeading({ title, description, actions, icon: Icon }) {
   );
 }
 
-export function StatCard({ label, value, hint, icon: Icon, tone = 'brand', footer = null }) {
+/**
+ * KPI tile in the template style: small icon + label on top, big number, and an
+ * optional pill (e.g. "12 today") next to it.
+ */
+export function StatCard({ label, value, hint, icon: Icon, tone = 'brand', pill = null, pillTone = 'emerald', footer = null }) {
   const iconTone = {
-    brand: 'bg-brand-500/15 text-brand-300 ring-1 ring-brand-400/20',
-    emerald: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/20',
-    amber: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20',
-    rose: 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-400/20',
-    violet: 'bg-violet-500/15 text-violet-300 ring-1 ring-violet-400/20',
-    slate: 'bg-white/10 text-slate-600 ring-1 ring-white/10',
-    blue: 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-400/20',
+    brand: 'text-brand-700',
+    emerald: 'text-emerald-600',
+    amber: 'text-amber-600',
+    rose: 'text-rose-600',
+    violet: 'text-violet-600',
+    slate: 'text-slate-500',
+    blue: 'text-sky-600',
   }[tone];
   return (
-    <div className="card p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
-        </div>
-        {Icon ? (
-          <span className={`grid h-9 w-9 place-items-center rounded-xl ${iconTone}`}>
-            <Icon className="h-4.5 w-4.5" />
-          </span>
+    <div className="card p-4 sm:p-5">
+      <p className="flex items-center gap-2 text-xs font-medium text-slate-600">
+        {Icon ? <Icon className={`h-3.5 w-3.5 ${iconTone}`} /> : null}
+        {label}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <p className="text-2xl font-bold tracking-tight text-slate-950 sm:text-[28px]">{value}</p>
+        {pill != null ? (
+          <Badge tone={pillTone} className="!rounded-md !px-1.5 !py-0.5 !text-[10px]">
+            {pill}
+          </Badge>
         ) : null}
       </div>
       {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
@@ -84,7 +89,7 @@ export function EmptyState({ icon: Icon, title, description, action }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-6 py-12 text-center">
       {Icon ? (
-        <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-600 ring-1 ring-white/10">
+        <span className="mb-3 grid h-11 w-11 place-items-center rounded-full bg-surface text-slate-400 ring-1 ring-slate-200">
           <Icon className="h-5 w-5" />
         </span>
       ) : null}
@@ -96,10 +101,10 @@ export function EmptyState({ icon: Icon, title, description, action }) {
 }
 
 const ALERT_TONES = {
-  info: 'border-sky-400/30 bg-sky-500/10 text-sky-200',
-  success: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200',
-  warning: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
-  error: 'border-rose-400/30 bg-rose-500/10 text-rose-200',
+  info: 'border-sky-200 bg-sky-50 text-sky-900',
+  success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+  warning: 'border-amber-200 bg-amber-50 text-amber-900',
+  error: 'border-rose-200 bg-rose-50 text-rose-900',
 };
 
 export function Alert({ tone = 'info', title, children, className = '' }) {
@@ -138,9 +143,9 @@ export function Modal({ open, onClose, title, description, children, footer, wid
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6">
       <div
-        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#111936] shadow-2xl shadow-black/60 sm:rounded-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-xl'}`}
+        className={`flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl bg-surface shadow-2xl sm:rounded-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-xl'}`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
             <h3 className="text-base font-semibold text-slate-900">{title}</h3>
             {description ? <p className="mt-0.5 text-sm text-slate-500">{description}</p> : null}
@@ -150,7 +155,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        {footer ? <div className="flex flex-wrap justify-end gap-2 border-t border-white/10 px-5 py-3">{footer}</div> : null}
+        {footer ? <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-3">{footer}</div> : null}
       </div>
     </div>
   );
@@ -169,7 +174,7 @@ export function Toggle({ checked, onChange, label, description, disabled = false
         aria-checked={checked}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${checked ? 'bg-brand-600' : 'bg-slate-300'}`}
+        className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${checked ? 'bg-brand-500' : 'bg-slate-300'}`}
       >
         <span
           className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow transition ${checked ? 'translate-x-5.5' : 'translate-x-1'}`}
@@ -181,15 +186,15 @@ export function Toggle({ checked, onChange, label, description, disabled = false
 
 export function ProgressBar({ value = 0, tone = 'brand', className = '' }) {
   const tones = {
-    brand: 'bg-brand-500/15',
+    brand: 'bg-brand-500',
     emerald: 'bg-emerald-500',
     amber: 'bg-amber-500',
     rose: 'bg-rose-500',
   };
   return (
-    <div className={`h-2 w-full overflow-hidden rounded-full bg-white/10 ${className}`}>
+    <div className={`h-2 w-full overflow-hidden rounded-full bg-slate-200 ${className}`}>
       <div
-        className={`h-full rounded-full transition-all duration-500 ${tones[tone] || tones.brand}`}
+        className={`h-full rounded-full transition-all duration-500 ${tone === 'brand' ? 'bg-linear-to-r from-[#8f3cff] to-[#c23cff]' : tones[tone] || tones.brand}`}
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
@@ -210,5 +215,5 @@ export function Field({ label, hint, required, children, className = '' }) {
 }
 
 export function Skeleton({ className = '' }) {
-  return <div className={`animate-pulse rounded-lg bg-white/10 ${className}`} />;
+  return <div className={`animate-pulse rounded-lg bg-slate-200/70 ${className}`} />;
 }

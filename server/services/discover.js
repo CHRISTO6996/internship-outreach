@@ -6,10 +6,21 @@ import { hunterDomainSearch } from './hunter.js';
 import { scoreCandidate, pickBest } from './scoring.js';
 import { resolveWebsite } from './website.js';
 import { verifyEmail } from './verify.js';
-import { hunter } from '../config.js';
-import { normalizeEmail } from './extract.js';
-import { isBlockedHost } from '../lib/domains.js';
+import { activeSearchProvider, hunter } from '../config.js';
+import { extractEmailsFromHtml, normalizeEmail } from './extract.js';
+import { isBlockedHost, registrableDomain, sameSite } from '../lib/domains.js';
 import { checkMx } from './mx.js';
+import { webSearch } from './search.js';
+import { fetchDocument, fetchDocumentViaReader } from '../lib/http.js';
+
+const PRIORITY_CATEGORIES = new Set(['hr', 'recruitment', 'careers', 'internship', 'general']);
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 class CancelledError extends Error {
   constructor() {
@@ -84,6 +95,98 @@ function saveEmail(companyId, candidate) {
 }
 
 /**
+ * Search-assisted fallback. When the official site does not publish a usable
+ * mailbox, ask the configured search API for public pages or snippets that
+ * mention an address on the company's own domain. Only real addresses found in
+ * real results are returned - nothing is guessed or invented.
+ */
+async function searchForEmails({ name, domain, log }) {
+  if (!activeSearchProvider()) return [];
+  const siteRoot = registrableDomain(domain);
+  if (!siteRoot) return [];
+
+  const queries = [
+    `"${name}" careers recruitment email`,
+    `site:${siteRoot} email contact careers`,
+    `"@${siteRoot}"`,
+  ];
+
+  const results = [];
+  const seenUrls = new Set();
+  for (const query of queries) {
+    try {
+      const found = await webSearch(query, { num: 10 });
+      for (const result of found) {
+        if (!result?.url || seenUrls.has(result.url)) continue;
+        seenUrls.add(result.url);
+        results.push(result);
+      }
+    } catch (error) {
+      log('search_error', `Search fallback failed for "${query}": ${error.message}`, { level: 'warn' });
+    }
+    if (results.length >= 24) break;
+  }
+
+  const candidates = new Map();
+  const accept = (candidate, sourceUrl, sourceType) => {
+    const emailDomain = registrableDomain(String(candidate.email || '').split('@')[1]);
+    if (!emailDomain || emailDomain !== siteRoot) return;
+    const existing = candidates.get(candidate.email);
+    if (existing) {
+      existing.occurrences = (existing.occurrences || 0) + 1;
+      return;
+    }
+    candidates.set(candidate.email, {
+      ...candidate,
+      sourceUrl: sourceUrl || candidate.sourceUrl,
+      sourceType: sourceType || candidate.sourceType,
+      occurrences: 1,
+    });
+  };
+
+  // Addresses printed directly in search snippets.
+  for (const result of results) {
+    if (!result.snippet) continue;
+    const extracted = extractEmailsFromHtml(`<p>${escapeHtml(result.snippet)}</p>`, result.url);
+    for (const candidate of extracted) accept(candidate, result.url, 'search');
+  }
+
+  // Same-site result pages the crawler may not have reached.
+  const pages = results.filter((result) => sameSite(result.url, siteRoot)).slice(0, 4);
+  for (const result of pages) {
+    try {
+      let page;
+      try {
+        page = await fetchDocument(result.url);
+      } catch (error) {
+        if (![401, 403, 429, 451].includes(error.status)) throw error;
+        page = await fetchDocumentViaReader(result.url);
+      }
+      if (!page.viaReader && !/text\/html|application\/xhtml/i.test(page.contentType || '')) continue;
+      const extracted = extractEmailsFromHtml(page.text, page.url);
+      for (const candidate of extracted) accept(candidate, page.url, candidate.sourceType);
+    } catch (error) {
+      log('search_page_error', `${result.url} could not be read: ${error.message}`, {
+        level: 'debug',
+        url: result.url,
+      });
+    }
+  }
+
+  const found = [...candidates.values()];
+  if (found.length) {
+    log(
+      'search_fallback',
+      `Search-assisted discovery found ${found.length} public address(es) on ${siteRoot}.`,
+      { addresses: found.map((candidate) => candidate.email) },
+    );
+  } else {
+    log('search_fallback_empty', `Search found no published ${siteRoot} address.`, { level: 'info' });
+  }
+  return found;
+}
+
+/**
  * Full discovery pipeline for one company:
  * website -> crawl official pages -> collect public emails -> verify -> pick primary.
  */
@@ -155,6 +258,15 @@ export async function discoverCompany(companyId, { signal } = {}) {
       } catch (error) {
         log('hunter_error', `Hunter.io lookup failed: ${error.message}`, { level: 'warn' });
       }
+    }
+    ensureActive(signal);
+
+    // Search-assisted fallback: the company site may hide contacts behind a
+    // form, or publish them on a page the crawler could not reach.
+    const hasPriorityMailbox = candidates.some((candidate) => PRIORITY_CATEGORIES.has(candidate.category));
+    if (!candidates.length || !hasPriorityMailbox) {
+      const searched = await searchForEmails({ name: company.name, domain: resolved.domain, log });
+      if (searched.length) candidates.push(...searched);
     }
     ensureActive(signal);
 

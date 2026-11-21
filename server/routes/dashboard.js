@@ -85,12 +85,13 @@ dashboardRouter.get('/stats', (req, res) => {
       href: '/integrations',
     });
   }
-  if (!configured.zerobounce) {
+  if (!configured.pingutil && !configured.zerobounce && !configured.hunter) {
     pendingChecks.push({
-      id: 'zerobounce',
+      id: 'verification',
       severity: 'info',
       title: 'No email verification API',
-      detail: 'Addresses are checked with DNS MX only and will be marked Unverified. Add ZEROBOUNCE_API_KEY.',
+      detail:
+        'Addresses are checked with DNS MX only and will be marked Unverified. Add PINGUTIL_API_KEY (recommended), ZEROBOUNCE_API_KEY or HUNTER_API_KEY.',
       href: '/integrations',
     });
   }
@@ -137,7 +138,9 @@ dashboardRouter.get('/stats', (req, res) => {
     readiness: {
       search: searchConfigured,
       searchProvider: searchAvailability().provider,
-      verification: Boolean(configured.zerobounce),
+      verification: Boolean(configured.pingutil || configured.zerobounce),
+      pingutil: Boolean(configured.pingutil),
+      zerobounce: Boolean(configured.zerobounce),
       hunter: Boolean(configured.hunter),
       gmail: Boolean(configured.gmail),
       sheets: Boolean(configured.sheets),

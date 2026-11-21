@@ -10,8 +10,25 @@ export class ApiError extends Error {
   }
 }
 
+const unauthorizedListeners = new Set();
+
+export function onUnauthorized(listener) {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+}
+
+function notifyUnauthorized() {
+  for (const listener of unauthorizedListeners) {
+    try {
+      listener();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 async function request(path, { method = 'GET', body, formData, signal } = {}) {
-  const options = { method, headers: {}, signal };
+  const options = { method, headers: {}, signal, credentials: 'same-origin' };
   if (formData) {
     options.body = formData;
   } else if (body !== undefined) {
@@ -35,6 +52,9 @@ async function request(path, { method = 'GET', body, formData, signal } = {}) {
 
   if (!response.ok) {
     const error = payload && typeof payload === 'object' ? payload.error : null;
+    if (response.status === 401 && error?.code === 'unauthorized' && !path.startsWith('/auth/')) {
+      notifyUnauthorized();
+    }
     throw new ApiError(error?.message || `Request failed (HTTP ${response.status})`, {
       status: response.status,
       code: error?.code,

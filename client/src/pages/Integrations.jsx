@@ -23,9 +23,8 @@ import { api } from '../lib/api.js';
 
 const ICONS = {
   search: Search,
-  hunter: Search,
+  pingutil: ShieldCheck,
   zerobounce: ShieldCheck,
-  apollo: Search,
   gmail: Mail,
   sheets: Table2,
 };
@@ -40,9 +39,6 @@ export default function Integrations() {
   const [verificationEmail, setVerificationEmail] = useState('');
   const [verificationResult, setVerificationResult] = useState(null);
   const [verifying, setVerifying] = useState(false);
-  const [gmailTesting, setGmailTesting] = useState(false);
-  const [gmailResult, setGmailResult] = useState(null);
-  const [switchingAccount, setSwitchingAccount] = useState('');
   const toast = useToast();
 
   async function load() {
@@ -76,30 +72,24 @@ export default function Integrations() {
     window.location.href = '/api/integrations/google/start';
   }
 
-  async function disconnectGoogle() {
-    if (!window.confirm('Disconnect this Google account? Sending and reply tracking stop until you reconnect.')) return;
+  async function disconnectGoogle(email) {
+    if (!window.confirm(`Disconnect ${email || 'this Google account'}?`)) return;
     try {
-      await api.post('/integrations/google/disconnect', {});
-      toast.success('Google account disconnected.');
-      setGmailResult(null);
+      await api.post('/integrations/google/disconnect', email ? { email } : {});
+      toast.success(`Disconnected ${email || 'Google account'}.`);
       load();
     } catch (error) {
       toast.error(error.message);
     }
   }
 
-  async function chooseAccount(email) {
-    if (email === gmail?.email) return;
-    setSwitchingAccount(email);
+  async function setDefaultGoogle(email) {
     try {
       await api.post('/integrations/google/default', { email });
-      toast.success(`Sending account changed to ${email}.`, { title: 'Account updated' });
-      setGmailResult(null);
+      toast.success(`Active Gmail account switched to ${email}.`);
       load();
     } catch (error) {
       toast.error(error.message);
-    } finally {
-      setSwitchingAccount('');
     }
   }
 
@@ -146,24 +136,8 @@ export default function Integrations() {
     }
   }
 
-  async function testGmail() {
-    setGmailTesting(true);
-    setGmailResult(null);
-    try {
-      const result = await api.post('/integrations/test/gmail', {});
-      setGmailResult({ ok: true, ...result });
-      toast.success(`Gmail connection verified for ${result.email}.`);
-    } catch (error) {
-      setGmailResult({ ok: false, message: error.message });
-      toast.error(error.message);
-    } finally {
-      setGmailTesting(false);
-    }
-  }
-
-  const googleAccount = data?.google?.accounts?.[0];
-  const gmail = data?.google?.connection;
-  const canConnectGoogle = Boolean(data?.google?.configured && gmail?.encryptionKeySet);
+  const googleAccounts = data?.google?.accounts || [];
+  const activeGoogleAccount = googleAccounts.find((acc) => acc.isDefault) || googleAccounts[0] || null;
 
   return (
     <>
@@ -239,17 +213,13 @@ export default function Integrations() {
             })}
           </div>
 
-          {gmail?.connected ? (
+          {activeGoogleAccount ? (
             <Alert tone="success" className="mb-5">
-              Gmail connected as <strong>{gmail.email}</strong>. Sending, connection tests and reply tracking can use this
-              account.
+              Active Gmail account: <strong>{activeGoogleAccount.email}</strong>
+              {googleAccounts.length > 1 ? ` (${googleAccounts.length} Gmail accounts connected)` : ''}. Sending, reply tracking, and
+              Sheets sync use the active account.
             </Alert>
-          ) : (
-            <Alert tone="warning" className="mb-5">
-              Gmail is not connected. Complete the OAuth setup below before sending.{' '}
-              {gmail?.missing?.length ? `Missing: ${gmail.missing.join(', ')}.` : null}
-            </Alert>
-          )}
+          ) : null}
 
           <div className="grid gap-5 lg:grid-cols-2">
             <Card className="p-4">
@@ -349,7 +319,7 @@ export default function Integrations() {
                       </>
                     ) : (
                       <>
-                        <XCircle className="h-4 w-4 text-slate-600" />
+                        <XCircle className="h-4 w-4 text-slate-400" />
                         <span className="text-slate-400">Missing</span>
                       </>
                     )}
@@ -363,12 +333,7 @@ export default function Integrations() {
             <SectionHeading title="Google OAuth setup" description="Needed for Gmail sending, reply tracking and Sheets mirroring." icon={Send} />
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-xl bg-slate-50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Authorised redirect URI</p>
-                  <span className="text-[10px] text-slate-400">
-                    {data.google.redirectUriSource === 'env' ? 'Set in .env' : 'Derived from request'}
-                  </span>
-                </div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Authorised redirect URI</p>
                 <div className="mt-1 flex items-center gap-2">
                   <code className="min-w-0 flex-1 truncate text-xs text-slate-700">{data.google.redirectUri}</code>
                   <button
@@ -395,121 +360,73 @@ export default function Integrations() {
                 </ul>
               </div>
             </div>
-
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Badge tone={data.google.configured ? 'emerald' : 'amber'} dot>
                 {data.google.configured ? 'OAuth client configured' : 'OAuth client missing'}
               </Badge>
-              <Badge tone={gmail?.encryptionKeySet ? 'emerald' : 'amber'} dot>
-                {gmail?.encryptionKeySet ? 'Token encryption key set' : 'TOKEN_ENCRYPTION_KEY missing'}
+              <Badge tone={activeGoogleAccount ? 'emerald' : 'slate'} dot>
+                {activeGoogleAccount
+                  ? `${googleAccounts.length} connected · Active: ${activeGoogleAccount.email}`
+                  : 'No Google account connected'}
               </Badge>
-              <Badge tone={gmail?.connected ? 'emerald' : 'slate'} dot>
-                {gmail?.connected ? `Connected: ${gmail.email}` : 'No Google account connected'}
-              </Badge>
-              {gmail?.ready ? (
-                <Badge tone="brand" dot>
-                  Ready to send
-                </Badge>
-              ) : null}
-            </div>
-
-            {gmail?.missing?.length && !gmail.connected ? (
-              <p className="mt-3 text-xs text-amber-200">
-                Before connecting: {gmail.missing.join(', ')}. Keys belong in the backend .env file, never in this browser.
-              </p>
-            ) : null}
-
-            {data?.google?.accounts?.length ? (
-              <div className="mt-3 border-t border-white/10 pt-3">
-                <p className="text-xs font-semibold text-slate-300">Sending account</p>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  Choose which connected Gmail account sends the requests. You can connect more than one.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {data.google.accounts.map((account) => {
-                    const active = account.isDefault;
-                    return (
-                      <button
-                        key={account.email}
-                        type="button"
-                        disabled={Boolean(switchingAccount)}
-                        onClick={() => chooseAccount(account.email)}
-                        className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition ${
-                          active
-                            ? 'bg-violet-500/20 text-violet-100 ring-violet-400/40'
-                            : 'bg-white/5 text-slate-300 ring-white/10 hover:bg-white/10 hover:text-white'
-                        } disabled:cursor-not-allowed disabled:opacity-60`}
-                        title={active ? 'Currently sending from this account' : `Send from ${account.email}`}
-                      >
-                        {switchingAccount === account.email ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : active ? (
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                        ) : (
-                          <Mail className="h-3.5 w-3.5" />
-                        )}
-                        {account.email}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
-
-            {gmailResult ? (
-              <div
-                className={`mt-3 rounded-xl p-3 text-xs ring-1 ${
-                  gmailResult.ok
-                    ? 'bg-emerald-500/10 text-emerald-200 ring-emerald-400/30'
-                    : 'bg-amber-500/10 text-amber-200 ring-amber-400/30'
-                }`}
-              >
-                {gmailResult.ok ? (
-                  <>
-                    <p className="font-semibold">Gmail API responded for {gmailResult.email}.</p>
-                    <p className="mt-0.5 opacity-90">
-                      Messages: {gmailResult.messagesTotal ?? 'unknown'} · Threads: {gmailResult.threadsTotal ?? 'unknown'}
-                    </p>
-                  </>
-                ) : (
-                  <p>{gmailResult.message}</p>
-                )}
-              </div>
-            ) : null}
-
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+              <div className="flex-1" />
               <button
                 type="button"
-                className="btn-secondary !px-3 !py-2 text-xs"
-                onClick={testGmail}
-                disabled={!gmail?.connected || gmailTesting}
-                title={gmail?.connected ? 'Call the Gmail API with the connected account' : 'Connect Gmail first'}
-              >
-                {gmailTesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                Test Gmail connection
-              </button>
-              <button
-                type="button"
-                className={gmail?.connected ? 'btn-secondary !px-3 !py-2 text-xs' : 'btn-primary !px-3.5 !py-2 text-xs'}
+                className="btn-primary !px-3.5 !py-2 text-xs"
                 onClick={connectGoogle}
-                disabled={!canConnectGoogle}
+                disabled={!data.google.configured}
                 title={
-                  canConnectGoogle
-                    ? gmail?.connected
-                      ? 'Connect another Google account'
-                      : 'Start Google OAuth'
-                    : 'Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and TOKEN_ENCRYPTION_KEY to the backend .env first'
+                  data.google.configured
+                    ? 'Open Google account chooser to connect a Gmail account'
+                    : 'Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env first'
                 }
               >
-                <LogIn className="h-3.5 w-3.5" /> {gmail?.connected ? 'Connect another account' : 'Connect Gmail'}
+                <LogIn className="h-3.5 w-3.5" />
+                {googleAccounts.length ? 'Add another Gmail' : 'Connect Gmail'}
               </button>
-              <div className="flex-1" />
-              {gmail?.connected ? (
-                <button type="button" className="btn-danger !px-3 !py-2 text-xs" onClick={disconnectGoogle}>
-                  <LogOut className="h-3.5 w-3.5" /> Disconnect current
-                </button>
-              ) : null}
             </div>
+
+            {googleAccounts.length ? (
+              <div className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-slate-50/50">
+                {googleAccounts.map((acc) => (
+                  <div key={acc.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+                      <span className="truncate text-sm font-medium text-slate-800">{acc.email}</span>
+                      {acc.isDefault ? (
+                        <Badge tone="emerald" dot>
+                          Active
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!acc.isDefault ? (
+                        <button
+                          type="button"
+                          className="btn-secondary !px-2.5 !py-1.5 text-xs"
+                          onClick={() => setDefaultGoogle(acc.email)}
+                        >
+                          Set active
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="btn-danger !px-2.5 !py-1.5 text-xs"
+                        onClick={() => disconnectGoogle(acc.email)}
+                      >
+                        <LogOut className="h-3.5 w-3.5" /> Disconnect
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <p className="mt-3 text-xs text-slate-500">
+              To sign in with a different Gmail while your Google Cloud OAuth app is in <strong>Testing</strong> mode, add that
+              Gmail address under <strong>Google Auth Platform → Audience → Test users</strong> in Google Cloud Console (or publish
+              the app).
+            </p>
           </Card>
         </>
       )}
@@ -530,7 +447,7 @@ export default function Integrations() {
             <ol className="space-y-2.5">
               {guide.steps.map((step, index) => (
                 <li key={step} className="flex gap-3 text-sm text-slate-700">
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-500/15 text-[11px] font-bold text-brand-300">
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-50 text-[11px] font-bold text-brand-700">
                     {index + 1}
                   </span>
                   <span>{step}</span>
@@ -538,7 +455,7 @@ export default function Integrations() {
               ))}
             </ol>
             <Alert tone="info">
-              Credentials belong in <code className="rounded bg-white/10 px-1 text-brand-200">.env</code>, never in the browser. Restart the API
+              Credentials belong in <code className="rounded bg-slate-100 px-1">.env</code>, never in the browser. Restart the API
               after editing the file.
             </Alert>
             {guide.docsUrl ? (

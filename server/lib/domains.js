@@ -187,10 +187,43 @@ const CONTEXT_CATEGORY_RULES = [
   { category: 'general', patterns: [/general (enquiries|inquiries|contact|mailbox)/i, /for (any |all )?(queries|enquiries|inquiries)/i] },
 ];
 
+const SEGMENT_CATEGORIES = {
+  hr: 'hr',
+  humanresources: 'hr',
+  people: 'hr',
+  rec: 'recruitment',
+  recruit: 'recruitment',
+  recruiter: 'recruitment',
+  recruiting: 'recruitment',
+  recruitment: 'recruitment',
+  talent: 'recruitment',
+  hiring: 'recruitment',
+  placements: 'recruitment',
+  career: 'careers',
+  careers: 'careers',
+  jobs: 'careers',
+  job: 'careers',
+  intern: 'internship',
+  interns: 'internship',
+  internship: 'internship',
+  internships: 'internship',
+  campus: 'internship',
+  info: 'general',
+  contact: 'general',
+  hello: 'general',
+  enquiries: 'general',
+  inquiries: 'general',
+};
+
 export function categorizeEmail(localPart, context = '') {
   const local = String(localPart || '').toLowerCase();
   for (const rule of EMAIL_CATEGORY_RULES) {
     if (rule.patterns.some((pattern) => pattern.test(local))) return rule.category;
+  }
+  // Compound role mailboxes such as "infy_rec_helpdesk" or "eu.hr.team".
+  for (const segment of local.split(/[^a-z0-9]+/)) {
+    const category = SEGMENT_CATEGORIES[segment];
+    if (category) return category;
   }
   const text = String(context || '');
   if (text) {

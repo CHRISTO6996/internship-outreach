@@ -75,9 +75,12 @@ export function apiBaseUrlForRequest(req) {
 }
 
 export const crawl = {
+  // Many corporate sites return 403 to non-browser user agents even for public
+  // pages. A standard browser string keeps discovery working; robots.txt is
+  // still checked before every page is fetched.
   userAgent:
     env('CRAWL_USER_AGENT') ||
-    'InternshipOutreachBot/0.1 (+contact: local operator; respects robots.txt)',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   maxPages: Number(env('CRAWL_MAX_PAGES') || 12),
   requestTimeoutMs: Number(env('CRAWL_TIMEOUT_MS') || 12000),
   maxPageBytes: Number(env('CRAWL_MAX_PAGE_BYTES') || 2_000_000),
@@ -85,14 +88,20 @@ export const crawl = {
 };
 
 export const search = {
-  provider: env('SEARCH_PROVIDER') || 'auto', // auto | serpapi | google_cse | none
+  provider: env('SEARCH_PROVIDER') || 'auto', // auto | serpapi | google_cse | duckduckgo | none
   serpApiKey: env('SERPAPI_KEY'),
   googleApiKey: env('GOOGLE_CSE_KEY') || env('GOOGLE_API_KEY'),
   googleCx: env('GOOGLE_CSE_CX'),
+  // Keyless DuckDuckGo HTML fallback keeps company-name discovery working when
+  // a paid/keyed search API is missing, disabled or out of quota.
+  keylessFallback: env('SEARCH_KEYLESS_FALLBACK') !== 'false',
+  // Second-level keyless fallback: Bing through Jina Reader.
+  jinaFallback: env('SEARCH_JINA_FALLBACK') !== 'false',
 };
 
 export const hunter = { apiKey: env('HUNTER_API_KEY') };
 export const zeroBounce = { apiKey: env('ZEROBOUNCE_API_KEY') };
+export const pingutil = { apiKey: env('PINGUTIL_API_KEY') };
 export const apollo = { apiKey: env('APOLLO_API_KEY') };
 export const snov = { clientId: env('SNOV_CLIENT_ID'), clientSecret: env('SNOV_CLIENT_SECRET') };
 
@@ -139,14 +148,18 @@ export const sending = {
 export const searchConfigured =
   (search.provider === 'serpapi' && Boolean(search.serpApiKey)) ||
   (search.provider === 'google_cse' && Boolean(search.googleApiKey && search.googleCx)) ||
-  (search.provider === 'auto' && Boolean((search.serpApiKey) || (search.googleApiKey && search.googleCx)));
+  (search.provider === 'duckduckgo' && search.keylessFallback) ||
+  (search.provider === 'auto' &&
+    Boolean(search.serpApiKey || (search.googleApiKey && search.googleCx) || search.keylessFallback));
 
 export function activeSearchProvider() {
   if (search.provider === 'serpapi') return search.serpApiKey ? 'serpapi' : null;
   if (search.provider === 'google_cse') return search.googleApiKey && search.googleCx ? 'google_cse' : null;
+  if (search.provider === 'duckduckgo') return search.keylessFallback ? 'duckduckgo' : null;
   if (search.provider === 'none') return null;
   if (search.serpApiKey) return 'serpapi';
   if (search.googleApiKey && search.googleCx) return 'google_cse';
+  if (search.keylessFallback) return 'duckduckgo';
   return null;
 }
 
@@ -175,6 +188,17 @@ export const integrations = [
     alternatives: null,
   },
   {
+    key: 'pingutil',
+    name: 'Pingutil',
+    category: 'Verification',
+    configured: Boolean(pingutil.apiKey),
+    requiredEnv: ['PINGUTIL_API_KEY'],
+    description:
+      'Mailbox-level verification with catch-all and disposable-domain detection. Runs before ZeroBounce and Hunter.',
+    docsUrl: 'https://pingutil.com/api',
+    alternatives: 'ZeroBounce or Hunter email verifier when configured',
+  },
+  {
     key: 'zerobounce',
     name: 'ZeroBounce',
     category: 'Verification',
@@ -182,7 +206,7 @@ export const integrations = [
     requiredEnv: ['ZEROBOUNCE_API_KEY'],
     description: 'Verifies deliverability before any email is sent. Invalid addresses are never emailed.',
     docsUrl: 'https://www.zerobounce.net/docs/',
-    alternatives: 'Hunter email verifier is used as a fallback when configured',
+    alternatives: 'Pingutil or Hunter email verifier when configured',
   },
   {
     key: 'apollo',

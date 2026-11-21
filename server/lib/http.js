@@ -11,7 +11,7 @@ export class HttpError extends Error {
 
 const MAX_JSON_BYTES = 4_000_000;
 
-async function request(url, { timeoutMs = crawl.requestTimeoutMs, headers = {}, method = 'GET' } = {}) {
+async function request(url, { timeoutMs = crawl.requestTimeoutMs, headers = {}, method = 'GET', body } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -19,6 +19,7 @@ async function request(url, { timeoutMs = crawl.requestTimeoutMs, headers = {}, 
       method,
       redirect: 'follow',
       signal: controller.signal,
+      body,
       headers: {
         'user-agent': crawl.userAgent,
         accept: '*/*',
@@ -80,10 +81,40 @@ export async function fetchDocument(url, { maxBytes = crawl.maxPageBytes, timeou
   };
 }
 
-export async function fetchJson(url, { timeoutMs, headers } = {}) {
-  const response = await request(url, {
+/**
+ * Last-resort page reader for sites that block bots or render with JavaScript.
+ * Uses Jina Reader (https://r.jina.ai) which returns clean markdown.
+ */
+export async function fetchDocumentViaReader(url, { timeoutMs = 45000 } = {}) {
+  const response = await request(`https://r.jina.ai/${url}`, {
     timeoutMs,
+    headers: {
+      accept: 'text/plain,text/markdown,*/*',
+      'x-return-format': 'markdown',
+    },
+  });
+  if (!response.ok) {
+    throw new HttpError(`Reader fallback failed (HTTP ${response.status})`, {
+      status: response.status,
+      url,
+    });
+  }
+  const text = await response.text();
+  return {
+    url,
+    status: 200,
+    contentType: 'text/plain; charset=utf-8',
+    text,
+    truncated: false,
+    viaReader: true,
+  };
+}
+
+export async function fetchJson(url, { timeoutMs, headers, method = 'GET', body } = {}) {  const response = await request(url, {
+    timeoutMs,
+    method,
     headers: { accept: 'application/json', ...headers },
+    body,
   });
   const raw = await response.text();
   if (raw.length > MAX_JSON_BYTES) {

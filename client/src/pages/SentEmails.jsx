@@ -205,7 +205,7 @@ export default function SentEmails() {
                   return (
                     <tr key={send.id} className="hover:bg-slate-50/60">
                       <td className="td">
-                        <Link to={`/companies/${send.companyId}`} className="font-medium text-slate-900 hover:text-brand-200">
+                        <Link to={`/companies/${send.companyId}`} className="font-medium text-slate-900 hover:text-brand-700">
                           {send.companyName}
                         </Link>
                         <p className="text-[11px] text-slate-400">#{send.id}</p>
@@ -227,7 +227,7 @@ export default function SentEmails() {
                           <button
                             type="button"
                             onClick={() => copyMessageId(send.gmailMessageId)}
-                            className="inline-flex max-w-40 items-center gap-1 truncate font-mono text-[11px] text-slate-600 hover:text-brand-200"
+                            className="inline-flex max-w-40 items-center gap-1 truncate font-mono text-[11px] text-slate-600 hover:text-brand-700"
                             title={send.gmailMessageId}
                           >
                             <Copy className="h-3 w-3 shrink-0" />
@@ -250,7 +250,7 @@ export default function SentEmails() {
                           {send.status === 'failed' || send.status === 'skipped' || send.status === 'cancelled' ? (
                             <button
                               type="button"
-                              className="btn-ghost !px-2 !py-1 text-brand-300"
+                              className="btn-ghost !px-2 !py-1 text-brand-700"
                               onClick={() => action(send, 'retry')}
                               disabled={busy !== null}
                               aria-label="Retry email"

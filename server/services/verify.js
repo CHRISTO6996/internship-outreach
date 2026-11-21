@@ -1,8 +1,9 @@
-import { hunter, zeroBounce } from '../config.js';
+import { hunter, pingutil, zeroBounce } from '../config.js';
 import { fetchJson } from '../lib/http.js';
 import { displayDomain } from '../lib/domains.js';
 import { isValidEmailSyntax } from './extract.js';
 import { checkMx } from './mx.js';
+import { pingutilVerify } from './pingutil.js';
 
 const ZEROBOUNCE_MAP = {
   valid: 'verified',
@@ -66,7 +67,7 @@ async function viaHunter(email) {
 
 /**
  * Verify a discovered email using real checks only:
- * syntax -> DNS MX -> ZeroBounce -> Hunter verifier -> unverified.
+ * syntax -> DNS MX -> Pingutil -> ZeroBounce -> Hunter verifier -> unverified.
  */
 export async function verifyEmail(email) {
   const address = String(email || '').trim().toLowerCase();
@@ -85,53 +86,49 @@ export async function verifyEmail(email) {
     };
   }
 
-  if (zeroBounce.apiKey) {
+  const providers = [];
+  if (pingutil.apiKey) providers.push({ name: 'Pingutil', run: () => pingutilVerify(address) });
+  if (zeroBounce.apiKey) providers.push({ name: 'ZeroBounce', run: () => viaZeroBounce(address) });
+  if (hunter.apiKey) providers.push({ name: 'Hunter', run: () => viaHunter(address) });
+
+  const failures = [];
+  let inconclusive = null;
+  for (const provider of providers) {
     try {
-      const result = await viaZeroBounce(address);
+      const result = await provider.run();
+      if (!result) continue;
+      // "unknown"/"unverified" means this provider could not prove anything, so
+      // give the next provider a chance before settling on the weak answer.
+      if (result.verification === 'unverified' || result.verification === 'unknown') {
+        inconclusive = inconclusive || result;
+        continue;
+      }
       return { ...result, mxValid: mx.valid };
     } catch (error) {
-      // Fall through to other verification rather than silently claiming "verified".
-      if (hunter.apiKey) {
-        try {
-          const result = await viaHunter(address);
-          return { ...result, detail: `${result.detail} (ZeroBounce error: ${error.message})`, mxValid: mx.valid };
-        } catch (hunterError) {
-          return {
-            verification: 'unverified',
-            provider: 'dns',
-            detail: `MX present, verification APIs failed (${error.message}; ${hunterError.message})`,
-            mxValid: mx.valid,
-          };
-        }
-      }
-      return {
-        verification: 'unverified',
-        provider: 'dns',
-        detail: `MX present, ZeroBounce error: ${error.message}`,
-        mxValid: mx.valid,
-      };
+      // Fall through to the next provider rather than silently claiming "verified".
+      failures.push(`${provider.name}: ${error.message}`);
     }
   }
 
-  if (hunter.apiKey) {
-    try {
-      const result = await viaHunter(address);
-      return { ...result, mxValid: mx.valid };
-    } catch (error) {
-      return {
-        verification: 'unverified',
-        provider: 'dns',
-        detail: `MX present, Hunter error: ${error.message}`,
-        mxValid: mx.valid,
-      };
-    }
+  if (inconclusive) {
+    return {
+      ...inconclusive,
+      detail: `${inconclusive.detail}${
+        failures.length ? `; other providers failed (${failures.join('; ')})` : ''
+      }`,
+      mxValid: mx.valid,
+    };
   }
 
   return {
-    verification: mx.valid ? 'unverified' : 'unverified',
+    verification: 'unverified',
     provider: 'dns',
     detail: mx.valid
-      ? 'Domain accepts mail (MX records found); no email verification API configured'
+      ? `Domain accepts mail (MX records found)${
+          failures.length
+            ? `; verification APIs failed (${failures.join('; ')})`
+            : '; no email verification API configured'
+        }`
       : `MX lookup inconclusive: ${mx.reason || 'unknown'}`,
     mxValid: mx.valid,
   };

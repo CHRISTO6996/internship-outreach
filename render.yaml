@@ -32,7 +32,13 @@ services:
         sync: false
       - key: SERPAPI_KEY
         sync: false
+      - key: GOOGLE_CSE_KEY
+        sync: false
+      - key: GOOGLE_CSE_CX
+        sync: false
       - key: HUNTER_API_KEY
+        sync: false
+      - key: PINGUTIL_API_KEY
         sync: false
       - key: ZEROBOUNCE_API_KEY
         sync: false

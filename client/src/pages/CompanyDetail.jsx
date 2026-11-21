@@ -224,7 +224,7 @@ export default function CompanyDetail() {
                   href={company.emailSource}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-300 hover:underline"
+                  className="mt-3 inline-flex max-w-full items-center gap-1 truncate text-xs text-brand-700 hover:underline"
                 >
                   <Globe2 className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{company.emailSource}</span>
@@ -246,7 +246,7 @@ export default function CompanyDetail() {
               href={company.website}
               target="_blank"
               rel="noreferrer"
-              className="mt-2 flex items-center gap-1.5 break-all text-sm font-medium text-brand-300 hover:underline"
+              className="mt-2 flex items-center gap-1.5 break-all text-sm font-medium text-brand-700 hover:underline"
             >
               {company.domain || company.website}
               <ExternalLink className="h-3.5 w-3.5 shrink-0" />
@@ -282,7 +282,7 @@ export default function CompanyDetail() {
               <dd className="font-medium text-slate-800">{titleCase(company.followUpStatus || 'none')}</dd>
             </div>
           </dl>
-          <Link to="/outreach" className="mt-3 inline-flex text-xs font-semibold text-brand-300 hover:underline">
+          <Link to="/outreach" className="mt-3 inline-flex text-xs font-semibold text-brand-700 hover:underline">
             Open outreach →
           </Link>
         </Card>
@@ -312,7 +312,7 @@ export default function CompanyDetail() {
               {company.emails.map((email) => {
                 const verification = VERIFICATION_META[email.verification] || VERIFICATION_META.unverified;
                 return (
-                  <tr key={email.id} className={email.isPrimary ? 'bg-brand-500/15' : ''}>
+                  <tr key={email.id} className={email.isPrimary ? 'bg-brand-50/30' : ''}>
                     <td className="td">
                       <div className="flex items-center gap-2">
                         <Mail className="h-3.5 w-3.5 text-slate-400" />
@@ -333,7 +333,7 @@ export default function CompanyDetail() {
                           href={email.sourceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="block truncate text-xs text-brand-300 hover:underline"
+                          className="block truncate text-xs text-brand-700 hover:underline"
                           title={email.sourceUrl}
                         >
                           {email.sourceUrl.replace(/^https?:\/\//, '')}

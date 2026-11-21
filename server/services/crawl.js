@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { crawl } from '../config.js';
-import { fetchDocument, sleep } from '../lib/http.js';
+import { fetchDocument, fetchDocumentViaReader, sleep } from '../lib/http.js';
 import { registrableDomain, sameSite } from '../lib/domains.js';
 import { extractEmailsFromHtml } from './extract.js';
 import { isCrawlAllowed } from './robots.js';
@@ -105,6 +105,20 @@ function collectLinks($, pageUrl) {
   return [...links.values()];
 }
 
+/**
+ * Fetch a page normally, then fall back to Jina Reader when the site blocks
+ * automated access (401/403/429/451) or returns a JavaScript-only shell.
+ */
+async function fetchPage(url, { timeoutMs = crawl.requestTimeoutMs } = {}) {
+  try {
+    return await fetchDocument(url, { timeoutMs });
+  } catch (error) {
+    const blocked = [401, 403, 429, 451].includes(error.status);
+    if (!blocked) throw error;
+    return fetchDocumentViaReader(url, { timeoutMs: Math.max(timeoutMs, 45000) });
+  }
+}
+
 async function fetchHomepage(website) {
   const candidates = [];
   const normalized = normalizeWebsite(website);
@@ -124,8 +138,8 @@ async function fetchHomepage(website) {
   let lastError = null;
   for (const candidate of candidates) {
     try {
-      const page = await fetchDocument(candidate, { timeoutMs: crawl.requestTimeoutMs });
-      if (!/text\/html|application\/xhtml/i.test(page.contentType || '') && page.text.length < 200) {
+      const page = await fetchPage(candidate, { timeoutMs: crawl.requestTimeoutMs });
+      if (!page.viaReader && !/text\/html|application\/xhtml/i.test(page.contentType || '') && page.text.length < 200) {
         lastError = new Error('Not an HTML page');
         continue;
       }
@@ -194,8 +208,8 @@ export async function crawlSite({ website, maxPages = crawl.maxPages, respectRob
           continue;
         }
       }
-      const page = await fetchDocument(next.url, { timeoutMs: crawl.requestTimeoutMs });
-      if (!/text\/html|application\/xhtml/i.test(page.contentType || '')) continue;
+      const page = await fetchPage(next.url, { timeoutMs: crawl.requestTimeoutMs });
+      if (!page.viaReader && !/text\/html|application\/xhtml/i.test(page.contentType || '')) continue;
       const $ = cheerio.load(page.text);
       const pageEmails = extractEmailsFromHtml(page.text, page.url);
       const text = $('body').text().replace(/\s+/g, ' ').trim();
@@ -203,7 +217,9 @@ export async function crawlSite({ website, maxPages = crawl.maxPages, respectRob
       onProgress({
         url: page.url,
         status: 'ok',
-        message: pageEmails.length ? `${pageEmails.length} email address(es)` : 'no email address',
+        message: `${pageEmails.length ? `${pageEmails.length} email address(es)` : 'no email address'}${
+          page.viaReader ? ' (via reader fallback)' : ''
+        }`,
       });
 
       for (const link of collectLinks($, page.url)) {

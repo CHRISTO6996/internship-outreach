@@ -8,6 +8,7 @@ import {
   search,
   zeroBounce,
   hunter,
+  pingutil,
   clientBaseUrlForRequest,
   redirectUriForRequest,
 } from '../config.js';
@@ -35,6 +36,7 @@ function envChecklist() {
     { key: 'GOOGLE_CSE_KEY', label: 'Google CSE key', set: Boolean(search.googleApiKey), group: 'Search' },
     { key: 'GOOGLE_CSE_CX', label: 'Google CSE engine ID', set: Boolean(search.googleCx), group: 'Search' },
     { key: 'HUNTER_API_KEY', label: 'Hunter.io key', set: Boolean(hunter.apiKey), group: 'Discovery' },
+    { key: 'PINGUTIL_API_KEY', label: 'Pingutil key', set: Boolean(pingutil.apiKey), group: 'Verification' },
     { key: 'ZEROBOUNCE_API_KEY', label: 'ZeroBounce key', set: Boolean(zeroBounce.apiKey), group: 'Verification' },
     { key: 'GOOGLE_CLIENT_ID', label: 'Google OAuth client ID', set: Boolean(google.clientId), group: 'Google' },
     { key: 'GOOGLE_CLIENT_SECRET', label: 'Google OAuth client secret', set: Boolean(google.clientSecret), group: 'Google' },
@@ -191,6 +193,13 @@ function guideFor(key, req) {
       return [
         'Create a Hunter.io account and open Dashboard → API.',
         'Copy the API key into HUNTER_API_KEY.',
+        ...shared.slice(2),
+      ];
+    case 'pingutil':
+      return [
+        'Create a free Pingutil account at pingutil.com and copy the API key from the dashboard.',
+        'Paste it into PINGUTIL_API_KEY. Pingutil runs first in the verification chain and detects catch-all and disposable domains.',
+        'Verification credits are consumed per address checked; the pipeline only verifies the top candidates.',
         ...shared.slice(2),
       ];
     case 'zerobounce':
